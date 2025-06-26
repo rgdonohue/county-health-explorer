@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>County Health Explorer</title>
+    <meta name="description" content="Explore U.S. county-level health data with interactive maps and statistical analysis">
+    
+    <!-- HealthViz 2025 Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+    
+    <!-- Styles -->
+    <link rel="stylesheet" href="css/styles.css">
+    
+    <!-- Observable Plot and D3 -->
+    <script src="https://cdn.jsdelivr.net/npm/d3@7"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@observablehq/plot@0.6"></script>
+</head>
+<body>
+    <div class="app-container">
+        <!-- Header -->
+        <header class="header">
+            <div class="header-content">
+                <h1>🗺️ County Health Explorer</h1>
+                <p>Spatial data science for U.S. county-level health indicators</p>
+            </div>
+        </header>
+
+        <!-- Main Content -->
+        <main class="main-content">
+            <!-- Control Panel -->
+            <aside class="sidebar">
+                <section class="variable-selector">
+                    <h3>Health Variable</h3>
+                    <select id="variable-select" aria-label="Select health variable">
+                        <option value="">Loading variables...</option>
+                    </select>
+                    <div id="variable-description" class="variable-description"></div>
+                </section>
+
+                <!-- Statistics Panel -->
+                <section class="stats-panel">
+                    <h3>Statistics</h3>
+                    <div id="stats-container" class="stats-container">
+                        <div class="stat-item">
+                            <span class="stat-label">Count:</span>
+                            <span id="stat-count" class="stat-value">-</span>
+                        </div>
+                        <div class="stat-item">
+                            <span class="stat-label">Mean:</span>
+                            <span id="stat-mean" class="stat-value">-</span>
+                        </div>
+                        <div class="stat-item">
+                            <span class="stat-label">Std Dev:</span>
+                            <span id="stat-std" class="stat-value">-</span>
+                        </div>
+                        <div class="stat-item">
+                            <span class="stat-label">Min:</span>
+                            <span id="stat-min" class="stat-value">-</span>
+                        </div>
+                        <div class="stat-item">
+                            <span class="stat-label">Max:</span>
+                            <span id="stat-max" class="stat-value">-</span>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- Legend Panel -->
+                <section class="legend-panel">
+                    <h3>Legend</h3>
+                    <div id="legend-container" class="legend-container">
+                        <!-- Legend will be populated by JavaScript -->
+                    </div>
+                </section>
+
+                <!-- Additional Analysis -->
+                <section class="analysis-panel">
+                    <h3>Analysis</h3>
+                    <div class="analysis-buttons">
+                        <button id="histogram-btn" class="analysis-btn" disabled>
+                            📊 Histogram
+                        </button>
+                        <button id="correlation-btn" class="analysis-btn" disabled>
+                            📈 Correlation
+                        </button>
+                        <button id="spatial-btn" class="analysis-btn" disabled>
+                            🌐 Spatial Stats
+                        </button>
+                    </div>
+                </section>
+            </aside>
+
+            <!-- Map Container -->
+            <section class="map-section">
+                <div id="map-container" class="map-container">
+                    <div id="loading-indicator" class="loading-indicator">
+                        <div class="spinner"></div>
+                        <p>Loading county health data...</p>
+                    </div>
+                    <div id="map-plot" class="map-plot"></div>
+                </div>
+                
+                <!-- County Info Panel -->
+                <div id="county-info" class="county-info hidden">
+                    <h4 id="county-name">County Name</h4>
+                    <p id="county-state">State</p>
+                    <div id="county-stats" class="county-stats"></div>
+                    <button id="close-county-info" class="close-btn" aria-label="Close county information">×</button>
+                </div>
+            </section>
+        </main>
+
+        <!-- Charts Section (Initially Hidden) -->
+        <section id="charts-section" class="charts-section hidden">
+            <div class="chart-container">
+                <div id="histogram-chart" class="chart"></div>
+                <div id="correlation-chart" class="chart"></div>
+            </div>
+        </section>
+
+        <!-- Footer -->
+        <footer class="footer">
+            <p>
+                Data: <a href="#" target="_blank">County Health Rankings 2025</a> | 
+                Projection: Albers Equal Area | 
+                <a href="/api/docs" target="_blank">API Docs</a>
+            </p>
+        </footer>
+    </div>
+
+    <!-- Error Modal -->
+    <div id="error-modal" class="modal hidden">
+        <div class="modal-content">
+            <h3>⚠️ Error</h3>
+            <p id="error-message">An error occurred</p>
+            <button id="close-error" class="btn-primary">Close</button>
+        </div>
+    </div>
+
+    <!-- JavaScript Modules -->
+    <script type="module" src="js/main.js"></script>
+</body>
+</html> 

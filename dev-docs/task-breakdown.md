@@ -5,7 +5,7 @@
 
 ---
 
-## 📅 Week 1: ETL Pipeline + Hardcoded Map Page
+## 📅 Milestone 1: ETL Pipeline + Hardcoded Map Page
 
 **🎯 Goal**: Load county health data into DuckDB, create basic map visualization foundation
 
@@ -120,7 +120,7 @@
 
 ---
 
-## 📅 Week 2: API Endpoints + Variable Browser
+## 📅 Milestone 2: API Endpoints + Variable Browser
 
 **🎯 Goal**: Complete backend API implementation with all health data endpoints
 
@@ -240,7 +240,7 @@
 
 ---
 
-## 📅 Week 3: Choropleth + Observable Plot Integration
+## 📅 Milestone 3: Choropleth + Observable Plot Integration
 
 **🎯 Goal**: Connect frontend to backend APIs with interactive choropleth mapping
 
@@ -342,7 +342,7 @@
 
 ---
 
-## 📅 Week 4: Stats + Observable Plot Charts
+## 📅 Milestone 4: Stats + Observable Plot Charts
 
 **🎯 Goal**: Add comprehensive statistical visualizations and analysis features
 
@@ -444,7 +444,7 @@
 
 ---
 
-## 📅 Week 5: Test Coverage + Accessibility Polish
+## 📅 Milestone 5: Test Coverage + Accessibility Polish
 
 **🎯 Goal**: Achieve comprehensive testing and accessibility compliance
 
