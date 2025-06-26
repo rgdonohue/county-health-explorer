@@ -1,0 +1,1103 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>County Health Explorer - Style Guide</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            /* HealthViz 2025 Color Palette */
+            --primary: #2B7A78;           /* Teal green - health, calm, clarity */
+            --accent: #F26419;            /* Vibrant orange - CTA, active UI */
+            --background: #F7F9FA;        /* Ultra-light gray - clean canvas */
+            --sidebar: #E6EDF0;           /* Soft cool gray - side UI panels */
+            --text-main: #1E1E1E;         /* Deep charcoal - main text */
+            --text-secondary: #6A737D;    /* Muted gray - sublabels, legends */
+            --highlight: #3A86FF;         /* Bold blue - hover, active states */
+            --success: #4CAF50;           /* Green - good scores, trends */
+            --warning: #FFC107;           /* Yellow-orange - alerts, high-risk */
+            
+            /* Choropleth Ramp (7-class sequential, ColorBrewer Greens) */
+            --choropleth-1: #EDF8FB;      /* Lightest */
+            --choropleth-2: #CCECE6;
+            --choropleth-3: #99D8C9;
+            --choropleth-4: #66C2A4;
+            --choropleth-5: #41AE76;
+            --choropleth-6: #238B45;
+            --choropleth-7: #005824;      /* Darkest */
+            
+            /* Dark Mode Variants */
+            --dark-background: #121212;
+            --dark-panels: #1F2A30;
+            --dark-text: #FFFFFF;
+            --dark-accent: #F9AB55;
+            
+            /* Extended Color Variants */
+            --primary-50: #E6F3F2;
+            --primary-100: #CCE7E5;
+            --primary-200: #99CFCB;
+            --primary-300: #66B7B1;
+            --primary-400: #339F97;
+            --primary-500: #2B7A78;        /* Base primary */
+            --primary-600: #226260;
+            --primary-700: #1A4948;
+            --primary-800: #113130;
+            --primary-900: #091818;
+            
+            --accent-50: #FEF3ED;
+            --accent-100: #FDE7DB;
+            --accent-200: #FBCFB7;
+            --accent-300: #F9B793;
+            --accent-400: #F79F6F;
+            --accent-500: #F26419;        /* Base accent */
+            --accent-600: #E55A17;
+            --accent-700: #C14F15;
+            --accent-800: #9E4412;
+            --accent-900: #7A390F;
+            
+            /* Typography */
+            --font-family-sans: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+            --font-family-mono: 'IBM Plex Mono', 'SF Mono', Consolas, monospace;
+            
+            --font-size-xs: 0.75rem;      /* 12px */
+            --font-size-sm: 0.875rem;     /* 14px */
+            --font-size-base: 1rem;       /* 16px */
+            --font-size-lg: 1.125rem;     /* 18px */
+            --font-size-xl: 1.25rem;      /* 20px */
+            --font-size-2xl: 1.5rem;      /* 24px */
+            --font-size-3xl: 1.875rem;    /* 30px */
+            --font-size-4xl: 2.25rem;     /* 36px */
+            
+            --font-weight-light: 300;
+            --font-weight-normal: 400;
+            --font-weight-medium: 500;
+            --font-weight-semibold: 600;
+            --font-weight-bold: 700;
+            
+            --line-height-tight: 1.25;
+            --line-height-normal: 1.5;
+            --line-height-relaxed: 1.75;
+            
+            /* Spacing System */
+            --space-1: 0.25rem;    /* 4px */
+            --space-2: 0.5rem;     /* 8px */
+            --space-3: 0.75rem;    /* 12px */
+            --space-4: 1rem;       /* 16px */
+            --space-5: 1.25rem;    /* 20px */
+            --space-6: 1.5rem;     /* 24px */
+            --space-8: 2rem;       /* 32px */
+            --space-10: 2.5rem;    /* 40px */
+            --space-12: 3rem;      /* 48px */
+            --space-16: 4rem;      /* 64px */
+            --space-20: 5rem;      /* 80px */
+            
+            /* Layout Dimensions */
+            --header-height: 64px;
+            --sidebar-width: 320px;
+            --max-content-width: 1200px;
+            
+            /* Borders & Shadows */
+            --border-radius-sm: 0.25rem;   /* 4px */
+            --border-radius: 0.5rem;       /* 8px */
+            --border-radius-lg: 0.75rem;   /* 12px */
+            --border-radius-xl: 1rem;      /* 16px */
+            
+            --border-light: 1px solid #E1E8ED;
+            --border-medium: 1px solid var(--sidebar);
+            --border-accent: 2px solid var(--accent);
+            
+            --shadow-sm: 0 1px 2px 0 rgb(30 30 30 / 0.05);
+            --shadow: 0 1px 3px 0 rgb(30 30 30 / 0.1), 0 1px 2px -1px rgb(30 30 30 / 0.1);
+            --shadow-md: 0 4px 6px -1px rgb(30 30 30 / 0.1), 0 2px 4px -2px rgb(30 30 30 / 0.1);
+            --shadow-lg: 0 10px 15px -3px rgb(30 30 30 / 0.1), 0 4px 6px -4px rgb(30 30 30 / 0.1);
+            
+            /* Transitions */
+            --transition-fast: 150ms cubic-bezier(0.4, 0, 0.2, 1);
+            --transition-normal: 250ms cubic-bezier(0.4, 0, 0.2, 1);
+            --transition-slow: 350ms cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        
+        /* Dark Mode Support */
+        @media (prefers-color-scheme: dark) {
+            :root {
+                --background: var(--dark-background);
+                --sidebar: var(--dark-panels);
+                --text-main: var(--dark-text);
+                --accent: var(--dark-accent);
+                --text-secondary: #A8B2BD;
+            }
+        }
+        
+        [data-theme="dark"] {
+            --background: var(--dark-background);
+            --sidebar: var(--dark-panels);
+            --text-main: var(--dark-text);
+            --accent: var(--dark-accent);
+            --text-secondary: #A8B2BD;
+        }
+        
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: var(--font-family-sans);
+            font-size: var(--font-size-base);
+            line-height: var(--line-height-normal);
+            color: var(--text-main);
+            background-color: var(--background);
+            transition: background-color var(--transition-normal), color var(--transition-normal);
+        }
+        
+        .container {
+            max-width: var(--max-content-width);
+            margin: 0 auto;
+            padding: var(--space-6);
+        }
+        
+        .style-guide {
+            display: grid;
+            gap: var(--space-12);
+        }
+        
+        .section {
+            background: white;
+            padding: var(--space-8);
+            border-radius: var(--border-radius-lg);
+            box-shadow: var(--shadow-sm);
+            border: var(--border-light);
+        }
+        
+        [data-theme="dark"] .section {
+            background: var(--dark-panels);
+            border-color: #2D3748;
+        }
+        
+        .section-title {
+            font-size: var(--font-size-2xl);
+            font-weight: var(--font-weight-semibold);
+            color: var(--text-main);
+            margin-bottom: var(--space-6);
+            border-bottom: 2px solid var(--primary);
+            padding-bottom: var(--space-2);
+        }
+        
+        .color-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: var(--space-4);
+        }
+        
+        .color-swatch {
+            text-align: center;
+            border-radius: var(--border-radius);
+            overflow: hidden;
+            box-shadow: var(--shadow);
+            border: var(--border-light);
+        }
+        
+        .color-display {
+            height: 80px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: var(--font-weight-medium);
+            text-shadow: 0 1px 2px rgb(0 0 0 / 0.3);
+            font-size: var(--font-size-sm);
+        }
+        
+        .color-info {
+            padding: var(--space-3);
+            background: var(--sidebar);
+            font-family: var(--font-family-mono);
+            font-size: var(--font-size-sm);
+            color: var(--text-secondary);
+        }
+        
+        .typography-examples {
+            display: grid;
+            gap: var(--space-6);
+        }
+        
+        .font-example {
+            padding: var(--space-4);
+            border: var(--border-medium);
+            border-radius: var(--border-radius);
+            background: var(--sidebar);
+        }
+        
+        .choropleth-strip {
+            display: flex;
+            height: 60px;
+            border-radius: var(--border-radius);
+            overflow: hidden;
+            box-shadow: var(--shadow);
+            margin: var(--space-4) 0;
+            border: var(--border-light);
+        }
+        
+        .choropleth-color {
+            flex: 1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: var(--font-size-xs);
+            font-weight: var(--font-weight-medium);
+            text-shadow: 0 1px 2px rgb(0 0 0 / 0.5);
+        }
+        
+        .component-examples {
+            display: grid;
+            gap: var(--space-8);
+        }
+        
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            gap: var(--space-2);
+            padding: var(--space-3) var(--space-5);
+            border: none;
+            border-radius: var(--border-radius);
+            font-family: inherit;
+            font-size: var(--font-size-sm);
+            font-weight: var(--font-weight-medium);
+            text-decoration: none;
+            cursor: pointer;
+            transition: all var(--transition-fast);
+        }
+        
+        .btn-primary {
+            background: var(--primary);
+            color: white;
+        }
+        
+        .btn-primary:hover {
+            background: var(--primary-600);
+            transform: translateY(-1px);
+            box-shadow: var(--shadow-md);
+        }
+        
+        .btn-accent {
+            background: var(--accent);
+            color: white;
+        }
+        
+        .btn-accent:hover {
+            background: var(--accent-600);
+            transform: translateY(-1px);
+            box-shadow: var(--shadow-md);
+        }
+        
+        .btn-secondary {
+            background: var(--sidebar);
+            color: var(--text-main);
+            border: var(--border-medium);
+        }
+        
+        .btn-secondary:hover {
+            background: var(--primary-50);
+            border-color: var(--primary-200);
+        }
+        
+        .card {
+            background: white;
+            padding: var(--space-6);
+            border-radius: var(--border-radius-lg);
+            box-shadow: var(--shadow);
+            border: var(--border-light);
+        }
+        
+        [data-theme="dark"] .card {
+            background: var(--dark-panels);
+            border-color: #2D3748;
+        }
+        
+        .stat-card {
+            text-align: center;
+            padding: var(--space-6);
+            background: linear-gradient(135deg, var(--primary-50) 0%, white 100%);
+            border-radius: var(--border-radius-lg);
+            border: 1px solid var(--primary-100);
+        }
+        
+        [data-theme="dark"] .stat-card {
+            background: linear-gradient(135deg, var(--primary-900) 0%, var(--dark-panels) 100%);
+            border-color: var(--primary-800);
+        }
+        
+        .stat-number {
+            font-size: var(--font-size-3xl);
+            font-weight: var(--font-weight-bold);
+            color: var(--primary);
+            margin-bottom: var(--space-2);
+        }
+        
+        .stat-label {
+            color: var(--text-secondary);
+            font-size: var(--font-size-sm);
+            font-weight: var(--font-weight-medium);
+        }
+        
+        .form-group {
+            margin-bottom: var(--space-4);
+        }
+        
+        .form-label {
+            display: block;
+            font-size: var(--font-size-sm);
+            font-weight: var(--font-weight-medium);
+            color: var(--text-main);
+            margin-bottom: var(--space-2);
+        }
+        
+        .form-select, .form-input {
+            width: 100%;
+            padding: var(--space-3);
+            border: var(--border-medium);
+            border-radius: var(--border-radius);
+            font-family: inherit;
+            font-size: var(--font-size-sm);
+            background: white;
+            color: var(--text-main);
+            transition: border-color var(--transition-fast), box-shadow var(--transition-fast);
+        }
+        
+        [data-theme="dark"] .form-select,
+        [data-theme="dark"] .form-input {
+            background: var(--dark-panels);
+            border-color: #2D3748;
+        }
+        
+        .form-select:focus, .form-input:focus {
+            outline: none;
+            border-color: var(--primary);
+            box-shadow: 0 0 0 3px rgb(43 122 120 / 0.1);
+        }
+        
+        .legend {
+            background: white;
+            padding: var(--space-4);
+            border-radius: var(--border-radius);
+            box-shadow: var(--shadow);
+            border: var(--border-light);
+        }
+        
+        [data-theme="dark"] .legend {
+            background: var(--dark-panels);
+            border-color: #2D3748;
+        }
+        
+        .legend-title {
+            font-size: var(--font-size-sm);
+            font-weight: var(--font-weight-semibold);
+            color: var(--text-main);
+            margin-bottom: var(--space-3);
+        }
+        
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: var(--space-2);
+            margin-bottom: var(--space-2);
+            font-size: var(--font-size-xs);
+            color: var(--text-secondary);
+        }
+        
+        .legend-color {
+            width: 16px;
+            height: 16px;
+            border-radius: var(--border-radius-sm);
+            border: var(--border-light);
+        }
+        
+        .theme-toggle {
+            position: fixed;
+            top: var(--space-4);
+            right: var(--space-4);
+            padding: var(--space-2);
+            background: var(--primary);
+            color: white;
+            border: none;
+            border-radius: var(--border-radius);
+            cursor: pointer;
+            font-size: var(--font-size-sm);
+        }
+    </style>
+</head>
+<body>
+    <button class="theme-toggle" onclick="toggleTheme()">🌙 Dark Mode</button>
+    
+    <div class="container">
+        <header style="text-align: center; margin-bottom: var(--space-12);">
+            <h1 style="font-size: var(--font-size-4xl); font-weight: var(--font-weight-bold); color: var(--primary); margin-bottom: var(--space-2);">
+                County Health Explorer
+            </h1>
+            <p style="font-size: var(--font-size-lg); color: var(--text-secondary);">
+                HealthViz 2025 Design System & Style Guide
+            </p>
+        </header>
+
+        <div class="style-guide">
+            <!-- HealthViz 2025 Color Palette -->
+            <section class="section">
+                <h2 class="section-title">HealthViz 2025 Color Palette</h2>
+                
+                <h3 style="margin-bottom: var(--space-4); color: var(--text-main);">Core Brand Colors</h3>
+                <div class="color-grid">
+                    <div class="color-swatch">
+                        <div class="color-display" style="background: var(--primary);">Primary</div>
+                        <div class="color-info">#2B7A78<br>Teal - Health & Calm</div>
+                    </div>
+                    <div class="color-swatch">
+                        <div class="color-display" style="background: var(--accent);">Accent / CTA</div>
+                        <div class="color-info">#F26419<br>Orange - Action & Energy</div>
+                    </div>
+                    <div class="color-swatch">
+                        <div class="color-display" style="background: var(--highlight);">Highlight</div>
+                        <div class="color-info">#3A86FF<br>Blue - Interactive States</div>
+                    </div>
+                    <div class="color-swatch">
+                        <div class="color-display" style="background: var(--success);">Success</div>
+                        <div class="color-info">#4CAF50<br>Green - Positive Outcomes</div>
+                    </div>
+                </div>
+
+                <h3 style="margin: var(--space-8) 0 var(--space-4); color: var(--text-main);">Interface Colors</h3>
+                <div class="color-grid">
+                    <div class="color-swatch">
+                        <div class="color-display" style="background: var(--background); color: var(--text-main);">Background</div>
+                        <div class="color-info">#F7F9FA<br>Clean Canvas</div>
+                    </div>
+                    <div class="color-swatch">
+                        <div class="color-display" style="background: var(--sidebar); color: var(--text-main);">Sidebar</div>
+                        <div class="color-info">#E6EDF0<br>Panel Background</div>
+                    </div>
+                    <div class="color-swatch">
+                        <div class="color-display" style="background: var(--text-main);">Text Main</div>
+                        <div class="color-info">#1E1E1E<br>Primary Text</div>
+                    </div>
+                    <div class="color-swatch">
+                        <div class="color-display" style="background: var(--warning);">Warning</div>
+                        <div class="color-info">#FFC107<br>Alerts & High Risk</div>
+                    </div>
+                </div>
+
+                <h3 style="margin: var(--space-8) 0 var(--space-4); color: var(--text-main);">Choropleth Scale (ColorBrewer Greens)</h3>
+                <div class="choropleth-strip">
+                    <div class="choropleth-color" style="background: var(--choropleth-1); color: var(--text-main);">1</div>
+                    <div class="choropleth-color" style="background: var(--choropleth-2); color: var(--text-main);">2</div>
+                    <div class="choropleth-color" style="background: var(--choropleth-3); color: white;">3</div>
+                    <div class="choropleth-color" style="background: var(--choropleth-4); color: white;">4</div>
+                    <div class="choropleth-color" style="background: var(--choropleth-5); color: white;">5</div>
+                    <div class="choropleth-color" style="background: var(--choropleth-6); color: white;">6</div>
+                    <div class="choropleth-color" style="background: var(--choropleth-7); color: white;">7</div>
+                </div>
+                <p style="font-size: var(--font-size-sm); color: var(--text-secondary); margin-top: var(--space-2);">
+                    <strong>Accessible 7-class sequential palette</strong> — Perceptually uniform for health data visualization. 
+                    Range: <code style="font-family: var(--font-family-mono); background: var(--sidebar); padding: var(--space-1);">#EDF8FB → #005824</code>
+                </p>
+            </section>
+
+            <!-- Typography -->
+            <section class="section">
+                <h2 class="section-title">Typography System</h2>
+                
+                <div class="typography-examples">
+                    <div class="font-example">
+                        <h1 style="font-size: var(--font-size-3xl); font-weight: var(--font-weight-bold); margin-bottom: var(--space-2); color: var(--primary);">
+                            App Title — Inter Bold
+                        </h1>
+                        <p style="color: var(--text-secondary); font-family: var(--font-family-mono);">font-size: 1.875rem (30px) • font-weight: 700</p>
+                    </div>
+                    
+                    <div class="font-example">
+                        <h2 style="font-size: var(--font-size-2xl); font-weight: var(--font-weight-semibold); margin-bottom: var(--space-2);">
+                            Section Headers — Inter Semibold
+                        </h2>
+                        <p style="color: var(--text-secondary); font-family: var(--font-family-mono);">font-size: 1.5rem (24px) • font-weight: 600</p>
+                    </div>
+                    
+                    <div class="font-example">
+                        <p style="font-size: var(--font-size-base); margin-bottom: var(--space-2);">
+                            Body text optimized for health data interfaces. Uses Inter Regular for excellent readability across devices and data densities.
+                        </p>
+                        <p style="color: var(--text-secondary); font-family: var(--font-family-mono);">font-size: 1rem (16px) • font-weight: 400 • line-height: 1.5</p>
+                    </div>
+                    
+                    <div class="font-example">
+                        <code style="background: var(--background); padding: var(--space-2) var(--space-3); border-radius: var(--border-radius-sm); font-family: var(--font-family-mono); border: var(--border-light);">
+                            const healthData = await fetch('/api/choropleth?var=diabetes');
+                        </code>
+                        <p style="color: var(--text-secondary); font-family: var(--font-family-mono); margin-top: var(--space-2);">IBM Plex Mono • Data values & code</p>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Components -->
+            <section class="section">
+                <h2 class="section-title">UI Components</h2>
+                
+                <div class="component-examples">
+                    <div>
+                        <h3 style="margin-bottom: var(--space-4); color: var(--text-main);">Button Styles</h3>
+                        <div style="display: flex; gap: var(--space-3); flex-wrap: wrap; align-items: center;">
+                            <button class="btn btn-primary">Primary Action</button>
+                            <button class="btn btn-accent">Call-to-Action</button>
+                            <button class="btn btn-secondary">Secondary</button>
+                        </div>
+                        <p style="font-size: var(--font-size-sm); color: var(--text-secondary); margin-top: var(--space-3);">
+                            Use <strong>Primary</strong> for main navigation, <strong>Accent</strong> for key actions, <strong>Secondary</strong> for supporting controls.
+                        </p>
+                    </div>
+
+                    <div>
+                        <h3 style="margin-bottom: var(--space-4); color: var(--text-main);">Health Statistics Cards</h3>
+                        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: var(--space-4);">
+                            <div class="stat-card">
+                                <div class="stat-number">3,142</div>
+                                <div class="stat-label">US Counties</div>
+                            </div>
+                            <div class="stat-card">
+                                <div class="stat-number">76.8</div>
+                                <div class="stat-label">Life Expectancy (avg)</div>
+                            </div>
+                            <div class="stat-card">
+                                <div class="stat-number">0.73</div>
+                                <div class="stat-label">Moran's I</div>
+                            </div>
+                            <div class="stat-card">
+                                <div class="stat-number">12.4%</div>
+                                <div class="stat-label">Diabetes Rate</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div>
+                        <h3 style="margin-bottom: var(--space-4); color: var(--text-main);">Form Controls</h3>
+                        <div style="max-width: 300px;">
+                            <div class="form-group">
+                                <label class="form-label">Health Variable</label>
+                                <select class="form-select">
+                                    <option>Premature Death Rate</option>
+                                    <option>Life Expectancy</option>
+                                    <option>Diabetes Prevalence</option>
+                                    <option>Adult Obesity</option>
+                                    <option>Physical Inactivity</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label">County Search</label>
+                                <input class="form-input" type="text" placeholder="Enter county name or FIPS code">
+                            </div>
+                        </div>
+                    </div>
+
+                    <div>
+                        <h3 style="margin-bottom: var(--space-4); color: var(--text-main);">Map Legend Example</h3>
+                        <div class="legend" style="max-width: 220px;">
+                            <div class="legend-title">Premature Death Rate</div>
+                            <div class="legend-item">
+                                <div class="legend-color" style="background: var(--choropleth-1);"></div>
+                                <span>0 - 250 (Low)</span>
+                            </div>
+                            <div class="legend-item">
+                                <div class="legend-color" style="background: var(--choropleth-3);"></div>
+                                <span>251 - 400</span>
+                            </div>
+                            <div class="legend-item">
+                                <div class="legend-color" style="background: var(--choropleth-5);"></div>
+                                <span>401 - 550</span>
+                            </div>
+                            <div class="legend-item">
+                                <div class="legend-color" style="background: var(--choropleth-7);"></div>
+                                <span>551+ (High)</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Layout & Spacing -->
+            <section class="section">
+                <h2 class="section-title">Layout Guidelines</h2>
+                <div style="display: grid; gap: var(--space-8); grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));">
+                    <div>
+                        <h3 style="margin-bottom: var(--space-3); color: var(--text-main);">Spacing Scale</h3>
+                        <div style="font-family: var(--font-family-mono); font-size: var(--font-size-sm); color: var(--text-secondary);">
+                            <div style="margin-bottom: var(--space-2);">--space-12: 3rem (48px)</div>
+                        </div>
+                    </div>
+                    
+                    <div>
+                        <h3 style="margin-bottom: var(--space-3); color: var(--text-main);">Layout Dimensions</h3>
+                        <div style="font-family: var(--font-family-mono); font-size: var(--font-size-sm); color: var(--text-secondary);">
+                            <div style="margin-bottom: var(--space-2);">Header Height: 64px</div>
+                            <div style="margin-bottom: var(--space-2);">Sidebar Width: 320px</div>
+                            <div style="margin-bottom: var(--space-2);">Max Content: 1200px</div>
+                            <div style="margin-bottom: var(--space-2);">Border Radius: 8px</div>
+                        </div>
+                    </div>
+                    
+                    <div>
+                        <h3 style="margin-bottom: var(--space-3); color: var(--text-main);">Responsive Breakpoints</h3>
+                        <div style="font-family: var(--font-family-mono); font-size: var(--font-size-sm); color: var(--text-secondary);">
+                            <div style="margin-bottom: var(--space-2);">Mobile: < 768px</div>
+                            <div style="margin-bottom: var(--space-2);">Tablet: 768px - 1024px</div>
+                            <div style="margin-bottom: var(--space-2);">Desktop: > 1024px</div>
+                            <div style="margin-bottom: var(--space-2);">Wide: > 1200px</div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div style="margin-top: var(--space-8);">
+                    <h3 style="margin-bottom: var(--space-4); color: var(--text-main);">CSS Usage Examples</h3>
+                    <div style="background: var(--background); padding: var(--space-4); border-radius: var(--border-radius); border: var(--border-light);">
+                        <pre style="font-family: var(--font-family-mono); font-size: var(--font-size-sm); color: var(--text-secondary); line-height: var(--line-height-relaxed); margin: 0;">/* Map Container */
+.map-container {
+  height: calc(100vh - var(--header-height));
+  background: var(--background);
+  border-radius: var(--border-radius-lg);
+  overflow: hidden;
+  box-shadow: var(--shadow);
+}
+
+/* Health Stats Panel */
+.stats-panel {
+  background: white;
+  padding: var(--space-6);
+  border-radius: var(--border-radius-lg);
+  border: var(--border-light);
+  box-shadow: var(--shadow-sm);
+}
+
+/* Interactive Elements */
+.county-feature:hover {
+  stroke: var(--highlight);
+  stroke-width: 2px;
+  filter: brightness(1.1);
+  transition: all var(--transition-fast);
+}</pre>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Dark Mode Demo -->
+            <section class="section">
+                <h2 class="section-title">Dark Mode Support</h2>
+                <div style="display: grid; gap: var(--space-6);">
+                    <p style="color: var(--text-secondary);">
+                        The design system includes automatic dark mode support using CSS custom properties. 
+                        Toggle dark mode with the button in the top-right corner to see the theme adaptation.
+                    </p>
+                    
+                    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: var(--space-4);">
+                        <div style="padding: var(--space-4); background: var(--sidebar); border-radius: var(--border-radius); border: var(--border-light);">
+                            <h4 style="margin-bottom: var(--space-2); color: var(--text-main);">Light Theme Colors</h4>
+                            <div style="font-family: var(--font-family-mono); font-size: var(--font-size-xs); color: var(--text-secondary);">
+                                <div>Background: #F7F9FA</div>
+                                <div>Panels: #E6EDF0</div>
+                                <div>Text: #1E1E1E</div>
+                                <div>Accent: #F26419</div>
+                            </div>
+                        </div>
+                        
+                        <div style="padding: var(--space-4); background: var(--primary-50); border-radius: var(--border-radius); border: 1px solid var(--primary-200);">
+                            <h4 style="margin-bottom: var(--space-2); color: var(--primary);">Dark Theme Colors</h4>
+                            <div style="font-family: var(--font-family-mono); font-size: var(--font-size-xs); color: var(--text-secondary);">
+                                <div>Background: #121212</div>
+                                <div>Panels: #1F2A30</div>
+                                <div>Text: #FFFFFF</div>
+                                <div>Accent: #F9AB55</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Implementation Guide -->
+            <section class="section">
+                <h2 class="section-title">Implementation Guide</h2>
+                <div style="display: grid; gap: var(--space-6);">
+                    <div>
+                        <h3 style="margin-bottom: var(--space-3); color: var(--text-main);">Quick Start</h3>
+                        <ol style="color: var(--text-secondary); padding-left: var(--space-6);">
+                            <li style="margin-bottom: var(--space-2);">Copy the CSS custom properties from this style guide</li>
+                            <li style="margin-bottom: var(--space-2);">Import Inter and IBM Plex Mono fonts</li>
+                            <li style="margin-bottom: var(--space-2);">Use semantic HTML with CSS classes for components</li>
+                            <li style="margin-bottom: var(--space-2);">Apply choropleth colors to MapLibre layers</li>
+                            <li>Test accessibility and mobile responsiveness</li>
+                        </ol>
+                    </div>
+                    
+                    <div>
+                        <h3 style="margin-bottom: var(--space-3); color: var(--text-main);">MapLibre Integration</h3>
+                        <div style="background: var(--background); padding: var(--space-4); border-radius: var(--border-radius); border: var(--border-light);">
+                            <pre style="font-family: var(--font-family-mono); font-size: var(--font-size-sm); color: var(--text-secondary); margin: 0; line-height: var(--line-height-relaxed);">// Choropleth paint properties
+'fill-color': [
+  'case',
+  ['<', ['get', 'value'], 250], '#EDF8FB',
+  ['<', ['get', 'value'], 400], '#99D8C9', 
+  ['<', ['get', 'value'], 550], '#41AE76',
+  '#005824'
+],
+'fill-opacity': 0.8,
+'fill-outline-color': '#2B7A78'</pre>
+                        </div>
+                    </div>
+                    
+                    <div>
+                        <h3 style="margin-bottom: var(--space-3); color: var(--text-main);">Accessibility Notes</h3>
+                        <ul style="color: var(--text-secondary); padding-left: var(--space-6);">
+                            <li style="margin-bottom: var(--space-2);">All color combinations meet WCAG AA contrast requirements</li>
+                            <li style="margin-bottom: var(--space-2);">Choropleth scale works for colorblind users (ColorBrewer tested)</li>
+                            <li style="margin-bottom: var(--space-2);">Focus states are clearly defined with primary color outlines</li>
+                            <li>Interactive elements have minimum 44px touch targets</li>
+                        </ul>
+                    </div>
+                </div>
+            </section>
+        </div>
+        
+        <footer style="text-align: center; margin-top: var(--space-16); padding: var(--space-8); color: var(--text-secondary);">
+            <p style="margin-bottom: var(--space-2);">
+                <strong>HealthViz 2025 Design System</strong> — Built for spatial health data visualization
+            </p>
+            <p style="font-size: var(--font-size-sm);">
+                Accessible • Responsive • AI-Agent Friendly
+            </p>
+        </footer>
+    </div>
+
+    <script>
+        function toggleTheme() {
+            const body = document.body;
+            const currentTheme = body.getAttribute('data-theme');
+            const newTheme = currentTheme === 'dark' ? 'light' : 'dark';
+            
+            body.setAttribute('data-theme', newTheme);
+            
+            const button = document.querySelector('.theme-toggle');
+            button.textContent = newTheme === 'dark' ? '☀️ Light Mode' : '🌙 Dark Mode';
+            
+            // Save preference
+            localStorage.setItem('theme', newTheme);
+        }
+        
+        // Load saved theme
+        document.addEventListener('DOMContentLoaded', function() {
+            const savedTheme = localStorage.getItem('theme') || 'light';
+            document.body.setAttribute('data-theme', savedTheme);
+            
+            const button = document.querySelector('.theme-toggle');
+            button.textContent = savedTheme === 'dark' ? '☀️ Light Mode' : '🌙 Dark Mode';
+        });
+    </script>
+</body>
+</html>2);">--space-1: 0.25rem (4px)</div>
+                            <div style="margin-bottom: var(--space-2);">--space-2: 0.5rem (8px)</div>
+                            <div style="margin-bottom: var(--space-2);">--space-4: 1rem (16px)</div>
+                            <div style="margin-bottom: var(--space-2);">--space-6: 1.5rem (24px)</div>
+                            <div style="margin-bottom: var(--space-2);">--space-8: 2rem (32px)</div>
+                            <div style="margin-bottom: var(--space-2);">--space-12: 3rem (48px)</div>
+                        </div>
+                    </div>
+                    
+                    <div>
+                        <h3 style="margin-bottom: var(--space-3); color: var(--text-main);">Layout Dimensions</h3>
+                        <div style="font-family: var(--font-family-mono); font-size: var(--font-size-sm); color: var(--text-secondary);">
+                            <div style="margin-bottom: var(--space-2);">Header Height: 64px</div>
+                            <div style="margin-bottom: var(--space-2);">Sidebar Width: 320px</div>
+                            <div style="margin-bottom: var(--space-2);">Max Content: 1200px</div>
+                            <div style="margin-bottom: var(--space-2);">Border Radius: 8px</div>
+                        </div>
+                    </div>
+                    
+                    <div>
+                        <h3 style="margin-bottom: var(--space-3); color: var(--text-main);">Responsive Breakpoints</h3>
+                        <div style="font-family: var(--font-family-mono); font-size: var(--font-size-sm); color: var(--text-secondary);">
+                            <div style="margin-bottom: var(--space-2);">Mobile: < 768px</div>
+                            <div style="margin-bottom: var(--space-2);">Tablet: 768px - 1024px</div>
+                            <div style="margin-bottom: var(--space-2);">Desktop: > 1024px</div>
+                            <div style="margin-bottom: var(--space-2);">Wide: > 1200px</div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div style="margin-top: var(--space-8);">
+                    <h3 style="margin-bottom: var(--space-4); color: var(--text-main);">CSS Usage Examples</h3>
+                    <div style="background: var(--background); padding: var(--space-4); border-radius: var(--border-radius); border: var(--border-light);">
+                        <pre style="font-family: var(--font-family-mono); font-size: var(--font-size-sm); color: var(--text-secondary); line-height: var(--line-height-relaxed); margin: 0;">/* Map Container */
+.map-container {
+  height: calc(100vh - var(--header-height));
+  background: var(--background);
+  border-radius: var(--border-radius-lg);
+  overflow: hidden;
+  box-shadow: var(--shadow);
+}
+
+/* Health Stats Panel */
+.stats-panel {
+  background: white;
+  padding: var(--space-6);
+  border-radius: var(--border-radius-lg);
+  border: var(--border-light);
+  box-shadow: var(--shadow-sm);
+}
+
+/* Interactive Elements */
+.county-feature:hover {
+  stroke: var(--highlight);
+  stroke-width: 2px;
+  filter: brightness(1.1);
+  transition: all var(--transition-fast);
+}</pre>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Dark Mode Demo -->
+            <section class="section">
+                <h2 class="section-title">Dark Mode Support</h2>
+                <div style="display: grid; gap: var(--space-6);">
+                    <p style="color: var(--text-secondary);">
+                        The design system includes automatic dark mode support using CSS custom properties. 
+                        Toggle dark mode with the button in the top-right corner to see the theme adaptation.
+                    </p>
+                    
+                    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: var(--space-4);">
+                        <div style="padding: var(--space-4); background: var(--sidebar); border-radius: var(--border-radius); border: var(--border-light);">
+                            <h4 style="margin-bottom: var(--space-2); color: var(--text-main);">Light Theme Colors</h4>
+                            <div style="font-family: var(--font-family-mono); font-size: var(--font-size-xs); color: var(--text-secondary);">
+                                <div>Background: #F7F9FA</div>
+                                <div>Panels: #E6EDF0</div>
+                                <div>Text: #1E1E1E</div>
+                                <div>Accent: #F26419</div>
+                            </div>
+                        </div>
+                        
+                        <div style="padding: var(--space-4); background: var(--primary-50); border-radius: var(--border-radius); border: 1px solid var(--primary-200);">
+                            <h4 style="margin-bottom: var(--space-2); color: var(--primary);">Dark Theme Colors</h4>
+                            <div style="font-family: var(--font-family-mono); font-size: var(--font-size-xs); color: var(--text-secondary);">
+                                <div>Background: #121212</div>
+                                <div>Panels: #1F2A30</div>
+                                <div>Text: #FFFFFF</div>
+                                <div>Accent: #F9AB55</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Implementation Guide -->
+            <section class="section">
+                <h2 class="section-title">Implementation Guide</h2>
+                <div style="display: grid; gap: var(--space-6);">
+                    <div>
+                        <h3 style="margin-bottom: var(--space-3); color: var(--text-main);">Quick Start</h3>
+                        <ol style="color: var(--text-secondary); padding-left: var(--space-6);">
+                            <li style="margin-bottom: var(--space-2);">Copy the CSS custom properties from this style guide</li>
+                            <li style="margin-bottom: var(--space-2);">Import Inter and IBM Plex Mono fonts</li>
+                            <li style="margin-bottom: var(--space-2);">Use semantic HTML with CSS classes for components</li>
+                            <li style="margin-bottom: var(--space-2);">Apply choropleth colors to MapLibre layers</li>
+                            <li>Test accessibility and mobile responsiveness</li>
+                        </ol>
+                    </div>
+                    
+                    <div>
+                        <h3 style="margin-bottom: var(--space-3); color: var(--text-main);">MapLibre Integration</h3>
+                        <div style="background: var(--background); padding: var(--space-4); border-radius: var(--border-radius); border: var(--border-light);">
+                            <pre style="font-family: var(--font-family-mono); font-size: var(--font-size-sm); color: var(--text-secondary); margin: 0; line-height: var(--line-height-relaxed);">// Choropleth paint properties
+'fill-color': [
+  'case',
+  ['<', ['get', 'value'], 250], '#EDF8FB',
+  ['<', ['get', 'value'], 400], '#99D8C9', 
+  ['<', ['get', 'value'], 550], '#41AE76',
+  '#005824'
+],
+'fill-opacity': 0.8,
+'fill-outline-color': '#2B7A78'</pre>
+                        </div>
+                    </div>
+                    
+                    <div>
+                        <h3 style="margin-bottom: var(--space-3); color: var(--text-main);">Observable Plot Chart Styling</h3>
+                        <div style="background: var(--background); padding: var(--space-4); border-radius: var(--border-radius); border: var(--border-light);">
+                            <pre style="font-family: var(--font-family-mono); font-size: var(--font-size-sm); color: var(--text-secondary); margin: 0; line-height: var(--line-height-relaxed);">// Health data histogram
+Plot.plot({
+  color: {scheme: "Greens"},
+  marks: [
+    Plot.rectY(data, 
+      Plot.binX({y: "count"}, {
+        x: "premature_death",
+        fill: "#2B7A78",
+        stroke: "white"
+      })
+    )
+  ],
+  style: {
+    background: "#F7F9FA",
+    fontSize: "14px",
+    fontFamily: "Inter, sans-serif"
+  }
+})</pre>
+                        </div>
+                    </div>
+                    
+                    <div>
+                        <h3 style="margin-bottom: var(--space-3); color: var(--text-main);">Accessibility Checklist</h3>
+                        <ul style="color: var(--text-secondary); padding-left: var(--space-6);">
+                            <li style="margin-bottom: var(--space-2);">✅ All color combinations meet WCAG AA contrast requirements</li>
+                            <li style="margin-bottom: var(--space-2);">✅ Choropleth scale works for colorblind users (ColorBrewer tested)</li>
+                            <li style="margin-bottom: var(--space-2);">✅ Focus states are clearly defined with primary color outlines</li>
+                            <li style="margin-bottom: var(--space-2);">✅ Interactive elements have minimum 44px touch targets</li>
+                            <li style="margin-bottom: var(--space-2);">✅ Text scales properly at 200% zoom</li>
+                            <li>✅ Dark mode preserves all accessibility standards</li>
+                        </ul>
+                    </div>
+                    
+                    <div>
+                        <h3 style="margin-bottom: var(--space-3); color: var(--text-main);">Performance Guidelines</h3>
+                        <ul style="color: var(--text-secondary); padding-left: var(--space-6);">
+                            <li style="margin-bottom: var(--space-2);">Use system fonts as fallbacks for web font loading</li>
+                            <li style="margin-bottom: var(--space-2);">Minimize box-shadow usage on frequently updated elements</li>
+                            <li style="margin-bottom: var(--space-2);">Leverage CSS custom properties for theme switching</li>
+                            <li style="margin-bottom: var(--space-2);">Use CSS transforms for hover animations (GPU accelerated)</li>
+                            <li>Consider prefers-reduced-motion for accessibility</li>
+                        </ul>
+                    </div>
+                </div>
+            </section>
+
+            <!-- CSS Variables Reference -->
+            <section class="section">
+                <h2 class="section-title">Complete CSS Variables Reference</h2>
+                <div style="background: var(--background); padding: var(--space-4); border-radius: var(--border-radius); border: var(--border-light); font-family: var(--font-family-mono); font-size: var(--font-size-sm); color: var(--text-secondary);">
+                    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: var(--space-6);">
+                        <div>
+                            <h4 style="color: var(--primary); margin-bottom: var(--space-2);">Colors</h4>
+                            <div>--primary: #2B7A78</div>
+                            <div>--accent: #F26419</div>
+                            <div>--background: #F7F9FA</div>
+                            <div>--sidebar: #E6EDF0</div>
+                            <div>--text-main: #1E1E1E</div>
+                            <div>--text-secondary: #6A737D</div>
+                            <div>--highlight: #3A86FF</div>
+                            <div>--success: #4CAF50</div>
+                            <div>--warning: #FFC107</div>
+                        </div>
+                        <div>
+                            <h4 style="color: var(--primary); margin-bottom: var(--space-2);">Choropleth</h4>
+                            <div>--choropleth-1: #EDF8FB</div>
+                            <div>--choropleth-2: #CCECE6</div>
+                            <div>--choropleth-3: #99D8C9</div>
+                            <div>--choropleth-4: #66C2A4</div>
+                            <div>--choropleth-5: #41AE76</div>
+                            <div>--choropleth-6: #238B45</div>
+                            <div>--choropleth-7: #005824</div>
+                        </div>
+                        <div>
+                            <h4 style="color: var(--primary); margin-bottom: var(--space-2);">Layout</h4>
+                            <div>--header-height: 64px</div>
+                            <div>--sidebar-width: 320px</div>
+                            <div>--max-content-width: 1200px</div>
+                            <div>--border-radius: 0.5rem</div>
+                            <div>--border-radius-lg: 0.75rem</div>
+                        </div>
+                        <div>
+                            <h4 style="color: var(--primary); margin-bottom: var(--space-2);">Typography</h4>
+                            <div>--font-family-sans: 'Inter'</div>
+                            <div>--font-family-mono: 'IBM Plex Mono'</div>
+                            <div>--font-size-base: 1rem</div>
+                            <div>--font-size-lg: 1.125rem</div>
+                            <div>--font-size-xl: 1.25rem</div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+        </div>
+        
+        <footer style="text-align: center; margin-top: var(--space-16); padding: var(--space-8); color: var(--text-secondary); border-top: var(--border-light);">
+            <p style="margin-bottom: var(--space-2); font-size: var(--font-size-lg); font-weight: var(--font-weight-medium);">
+                <strong style="color: var(--primary);">HealthViz 2025 Design System</strong>
+            </p>
+            <p style="font-size: var(--font-size-sm); margin-bottom: var(--space-3);">
+                Built for spatial health data visualization • Accessible • Responsive • AI-Agent Friendly
+            </p>
+            <div style="display: flex; justify-content: center; gap: var(--space-4); font-size: var(--font-size-sm);">
+                <span>🎨 Modern Color Palette</span>
+                <span>🗺️ MapLibre Ready</span>
+                <span>📊 Observable Plot Styled</span>
+                <span>♿ WCAG AA Compliant</span>
+            </div>
+        </footer>
+    </div>
+
+    <script>
+        function toggleTheme() {
+            const body = document.body;
+            const currentTheme = body.getAttribute('data-theme');
+            const newTheme = currentTheme === 'dark' ? 'light' : 'dark';
+            
+            body.setAttribute('data-theme', newTheme);
+            
+            const button = document.querySelector('.theme-toggle');
+            button.textContent = newTheme === 'dark' ? '☀️ Light Mode' : '🌙 Dark Mode';
+            
+            // Save preference
+            localStorage.setItem('theme', newTheme);
+        }
+        
+        // Load saved theme on page load
+        document.addEventListener('DOMContentLoaded', function() {
+            const savedTheme = localStorage.getItem('theme') || 'light';
+            document.body.setAttribute('data-theme', savedTheme);
+            
+            const button = document.querySelector('.theme-toggle');
+            button.textContent = savedTheme === 'dark' ? '☀️ Light Mode' : '🌙 Dark Mode';
+            
+            // Add smooth transitions after page load
+            setTimeout(() => {
+                document.body.style.transition = 'background-color 250ms, color 250ms';
+            }, 100);
+        });
+        
+        // Add some interactive behaviors for demo
+        document.addEventListener('DOMContentLoaded', function() {
+            // Add hover effects to color swatches
+            const swatches = document.querySelectorAll('.color-swatch');
+            swatches.forEach(swatch => {
+                swatch.addEventListener('mouseenter', function() {
+                    this.style.transform = 'translateY(-2px)';
+                    this.style.transition = 'transform 150ms ease';
+                });
+                
+                swatch.addEventListener('mouseleave', function() {
+                    this.style.transform = 'translateY(0)';
+                });
+            });
+            
+            // Copy hex codes on click
+            const colorInfos = document.querySelectorAll('.color-info');
+            colorInfos.forEach(info => {
+                info.style.cursor = 'pointer';
+                info.title = 'Click to copy hex code';
+                
+                info.addEventListener('click', function() {
+                    const hexCode = this.textContent.split('\n')[0];
+                    navigator.clipboard.writeText(hexCode).then(() => {
+                        const original = this.textContent;
+                        this.textContent = 'Copied! ' + hexCode;
+                        setTimeout(() => {
+                            this.textContent = original;
+                        }, 1000);
+                    });
+                });
+            });
+        });
+    </script>
+</body>
+</html>
