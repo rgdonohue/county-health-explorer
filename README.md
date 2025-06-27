@@ -176,8 +176,19 @@ const AppState = {
 
 ## 📊 Data Sources
 
-- **County Health Rankings 2025** (CSV format)
-- **US Census TIGER/CartoDB counties** (GeoJSON, 1:5m scale)
+This application utilizes data from the following authoritative sources:
+
+### Health Data
+- **County Health Rankings & Roadmaps**: [https://www.countyhealthrankings.org/](https://www.countyhealthrankings.org/)
+  - Provides comprehensive county-level health indicators including health outcomes, health factors, and social determinants
+  - 2025 Annual Data Release with measures for all U.S. counties
+  - Data includes premature death rates, preventable hospital stays, health behaviors, clinical care access, and social & economic factors
+
+### Geographic Data
+- **U.S. Census Bureau Cartographic Boundary Files**: [https://www.census.gov/geographies/mapping-files/time-series/geo/carto-boundary-file.html](https://www.census.gov/geographies/mapping-files/time-series/geo/carto-boundary-file.html)
+  - County boundary shapefiles optimized for thematic mapping
+  - 1:500,000 scale resolution for detailed visualization
+  - Simplified representations from the Census Bureau's MAF/TIGER geographic database
 
 ## 🎨 Design Principles
 
