@@ -68,18 +68,41 @@ county-health-explorer/
 
 3. **Run ETL pipeline** (first time only):
    ```bash
-   python backend/etl.py
+   python backend/app/etl.py
    ```
 
-4. **Start the application**:
-   ```bash
-   python backend/main.py
-   ```
+### Development (Recommended)
 
-5. **Access the application**:
-   - **Main App**: http://localhost:8000
-   - **API Docs**: http://localhost:8000/docs
-   - **Health Check**: http://localhost:8000/api/health
+**Option 1: Start both servers automatically**
+```bash
+python start_dev.py
+```
+This will start both backend and frontend servers with proper coordination and health checks.
+
+**Option 2: Start servers individually**
+
+Start the backend server:
+```bash
+cd backend && uvicorn app.main:app --reload --port 8000
+```
+
+Start the frontend server (in a new terminal):
+```bash
+python serve_frontend.py
+```
+The frontend server will check if the backend is running and provide helpful guidance if not.
+
+### Production
+
+**Start the main application server**:
+```bash
+cd backend && uvicorn app.main:app --port 8000
+```
+
+### Access Points
+- **Frontend App**: http://localhost:3000 (development) or http://localhost:8000 (production)
+- **API Documentation**: http://localhost:8000/docs
+- **Health Check**: http://localhost:8000/api/health
 
 ## 🔗 API Endpoints
 

@@ -1,9 +1,11 @@
+import { getVariableMetadata, transformValue, formatValue } from './metadata.js';
+
 /**
  * UI Manager for County Health Explorer
  * Handles all user interface updates and interactions
  */
 
-class UIManager {
+export class UIManager {
     constructor() {
         this.elements = this.getUIElements();
         this.currentNotification = null;
@@ -188,145 +190,221 @@ class UIManager {
     }
 
     /**
-     * Update variable description
+     * Format units for display
      */
-    updateVariableDescription(variableName, variables) {
-        if (!this.elements.variableDescription) return;
-
-        const variable = variables.find(v => v.name === variableName);
+    formatUnitsForDisplay(units) {
+        if (!units) return '';
         
-        if (variable && variable.description) {
-            this.elements.variableDescription.textContent = variable.description;
-            this.elements.variableDescription.style.display = 'block';
+        // Clean up common unit formats
+        const unitMap = {
+            'percentage': '%',
+            'per 100,000 population': 'per 100,000',
+            'per 1,000 population': 'per 1,000',
+            'per 10,000 population': 'per 10,000',
+            'years': 'years',
+            'days': 'days',
+            'ratio': 'ratio',
+            'index': 'index',
+            'count': 'count',
+            'rate': 'rate',
+            'numeric': ''
+        };
+        
+        return unitMap[units] || units;
+    }
+
+    /**
+     * Format value for legend display
+     */
+    formatValueForLegend(value, dataType, units) {
+        if (value === null || value === undefined || isNaN(value)) {
+            return '-';
+        }
+
+        // Format based on data type and value range
+        if (dataType === 'percentage' || units === 'percentage') {
+            // If values are 0-1, convert to percentage
+            if (value <= 1) {
+                return `${(value * 100).toFixed(1)}%`;
+            } else {
+                return `${value.toFixed(1)}%`;
+            }
+        } else if (dataType === 'rate' && (units.includes('per 100,000') || units.includes('per 1,000'))) {
+            // Rates should be whole numbers typically
+            return value.toFixed(0);
+        } else if (dataType === 'currency') {
+            return `$${value.toLocaleString()}`;
+        } else if (dataType === 'mortality' || units.includes('per 100,000')) {
+            return value.toFixed(0);
+        } else if (dataType === 'rate' || units.includes('per 1,000')) {
+            return value.toFixed(0);
+        } else if (units === 'years') {
+            return `${value.toFixed(1)} yrs`;
+        } else if (units === 'days') {
+            return `${value.toFixed(1)} days`;
+        } else if (value < 1) {
+            return value.toFixed(3);
+        } else if (value < 10) {
+            return value.toFixed(2);
         } else {
-            // Provide default description based on variable name
-            const description = this.getDefaultDescription(variableName);
-            this.elements.variableDescription.textContent = description;
-            this.elements.variableDescription.style.display = description ? 'block' : 'none';
+            return value.toFixed(1);
         }
     }
 
     /**
-     * Get default description for a variable
+     * Update variable description with proper context and units
      */
-    getDefaultDescription(variableName) {
-        const descriptions = {
-            'premature_death': 'Years of potential life lost before age 75 per 100,000 population',
-            'adult_obesity': 'Percentage of adults with a BMI >= 30',
-            'adult_smoking': 'Percentage of adults who are current smokers',
-            'physical_inactivity': 'Percentage of adults aged 20 and over reporting no leisure-time physical activity',
-            'excessive_drinking': 'Percentage of adults reporting binge or heavy drinking'
-        };
+    updateVariableDescription(variableName, variables, stats = null) {
+        if (!this.elements.variableDescription) return;
+
+        // Get systematic metadata
+        const metadata = getVariableMetadata(variableName);
         
-        return descriptions[variableName] || '';
+        let description = `<strong>${metadata.displayName}</strong>`;
+        
+        if (metadata.units) {
+            description += ` <span class="text-blue-600">(${metadata.units})</span>`;
+        }
+        
+        if (metadata.description) {
+            description += `<br><span class="text-gray-600 text-sm">${metadata.description}</span>`;
+        }
+
+        if (metadata.interpretation) {
+            description += `<br><span class="text-green-600 text-xs">💡 ${metadata.interpretation}</span>`;
+        }
+
+        // Add transformation note for percentage variables
+        if (metadata.transform === 'decimalToPercentage') {
+            description += `<br><span class="text-purple-600 text-xs">📊 Values converted from decimals to percentages</span>`;
+        }
+
+        this.elements.variableDescription.innerHTML = description;
     }
 
     /**
-     * Update statistics display
+     * Update statistics display with proper metadata context
      */
-    updateStatistics(stats) {
-        if (!stats) return;
+    updateStatistics(stats, currentVariable, variables) {
+        if (!stats) {
+            console.warn('⚠️ No statistics to display');
+            return;
+        }
 
         console.log('📊 Updating statistics display:', stats);
 
-        // Update count
+        // Get metadata for systematic formatting
+        const metadata = getVariableMetadata(currentVariable);
+
+        // Update individual statistics with proper formatting using metadata
         if (this.elements.statCount) {
-            this.elements.statCount.textContent = stats.count?.toLocaleString() || '-';
+            this.elements.statCount.textContent = stats.count?.toLocaleString() || 'N/A';
         }
 
-        // Update mean
         if (this.elements.statMean) {
-            this.elements.statMean.textContent = stats.mean ? 
-                Number(stats.mean).toFixed(2) : '-';
+            this.elements.statMean.textContent = formatValue(stats.mean, currentVariable);
         }
 
-        // Update standard deviation
         if (this.elements.statStd) {
-            this.elements.statStd.textContent = stats.std ? 
-                Number(stats.std).toFixed(2) : '-';
+            this.elements.statStd.textContent = formatValue(stats.std, currentVariable);
         }
 
-        // Update minimum
         if (this.elements.statMin) {
-            this.elements.statMin.textContent = stats.min ? 
-                Number(stats.min).toFixed(2) : '-';
+            this.elements.statMin.textContent = formatValue(stats.min, currentVariable);
         }
 
-        // Update maximum
         if (this.elements.statMax) {
-            this.elements.statMax.textContent = stats.max ? 
-                Number(stats.max).toFixed(2) : '-';
+            this.elements.statMax.textContent = formatValue(stats.max, currentVariable);
         }
+
+        console.log('✅ Statistics updated with metadata formatting');
     }
 
     /**
-     * Update legend based on choropleth data
+     * Update legend with proper metadata and context
      */
-    updateLegend(choroplethData, statistics) {
+    updateLegend(choroplethData, statistics, currentVariable, variables) {
         if (!this.elements.legendContainer || !choroplethData) return;
 
-        console.log('🏷️ Updating legend...');
+        console.log('🏷️ Updating legend with metadata...');
 
         // Clear existing legend
         this.elements.legendContainer.innerHTML = '';
 
-        // Get data values for legend
-        const values = choroplethData.features
-            .map(f => f.properties?.value)
-            .filter(v => v !== null && v !== undefined && !isNaN(v));
+        // Get systematic metadata
+        const metadata = getVariableMetadata(currentVariable);
 
-        if (values.length === 0) {
-            this.elements.legendContainer.innerHTML = '<p class="text-gray-500">No data available</p>';
+        // Create legend title with variable name and units (NO "LEGEND" text)
+        const legendTitle = document.createElement('h3');
+        legendTitle.className = 'text-lg font-semibold mb-4 text-gray-800';
+        
+        // Format the title with units
+        if (metadata.units) {
+            legendTitle.innerHTML = `${metadata.displayName}<br><span class="text-sm font-normal text-blue-600">(${metadata.units})</span>`;
+        } else {
+            legendTitle.textContent = metadata.displayName;
+        }
+        this.elements.legendContainer.appendChild(legendTitle);
+
+        // Get class breaks from choropleth data
+        const classBreaks = choroplethData.metadata?.class_breaks || [];
+        
+        if (classBreaks.length < 2) {
+            console.warn('⚠️ No valid class breaks for legend');
             return;
         }
 
-        // Calculate quantile breaks
-        const sortedValues = values.sort(d3.ascending);
-        const quantiles = [0, 0.2, 0.4, 0.6, 0.8, 1.0];
-        const breaks = quantiles.map(q => d3.quantile(sortedValues, q));
-
-        // Colors (matching map renderer)
+        // Create color scale (using a simple blue gradient)
         const colors = [
-            '#f0f9ff', '#e0f2fe', '#bae6fd', '#7dd3fc',
-            '#38bdf8', '#0ea5e9', '#0284c7'
+            '#f0f9ff', // lightest blue
+            '#bae6fd', // light blue  
+            '#7dd3fc', // medium light blue
+            '#38bdf8', // medium blue
+            '#0ea5e9', // darker blue
         ];
 
-        // Create legend items
-        for (let i = 0; i < breaks.length - 1; i++) {
+        // Create legend items using metadata for formatting
+        for (let i = 0; i < classBreaks.length - 1; i++) {
             const legendItem = document.createElement('div');
-            legendItem.className = 'legend-item';
+            legendItem.className = 'flex items-center mb-2';
 
+            // Color box
             const colorBox = document.createElement('div');
-            colorBox.className = 'legend-color';
-            colorBox.style.backgroundColor = colors[i];
-
-            const label = document.createElement('span');
-            label.className = 'legend-label';
+            colorBox.className = 'w-4 h-4 mr-3 border border-gray-300';
+            colorBox.style.backgroundColor = colors[i] || colors[colors.length - 1];
             
-            const minVal = breaks[i];
-            const maxVal = breaks[i + 1];
-            label.textContent = `${minVal?.toFixed(1)} - ${maxVal?.toFixed(1)}`;
+            // Value range using metadata formatting
+            const valueRange = document.createElement('span');
+            valueRange.className = 'text-sm text-gray-700';
+            
+            // Use metadata system for consistent formatting
+            const minVal = formatValue(classBreaks[i], currentVariable);
+            const maxVal = formatValue(classBreaks[i + 1], currentVariable);
+            
+            valueRange.textContent = `${minVal} - ${maxVal}`;
 
             legendItem.appendChild(colorBox);
-            legendItem.appendChild(label);
+            legendItem.appendChild(valueRange);
             this.elements.legendContainer.appendChild(legendItem);
         }
 
-        // Add no data legend item
+        // Add "No data" category if needed
         const noDataItem = document.createElement('div');
-        noDataItem.className = 'legend-item';
-
-        const noDataColor = document.createElement('div');
-        noDataColor.className = 'legend-color';
-                    noDataColor.style.backgroundColor = '#f8fafc';
-
+        noDataItem.className = 'flex items-center mb-2 mt-3';
+        
+        const noDataBox = document.createElement('div');
+        noDataBox.className = 'w-4 h-4 mr-3 border border-gray-300';
+        noDataBox.style.backgroundColor = '#f3f4f6'; // gray for no data
+        
         const noDataLabel = document.createElement('span');
-        noDataLabel.className = 'legend-label';
+        noDataLabel.className = 'text-sm text-gray-500';
         noDataLabel.textContent = 'No data';
-
-        noDataItem.appendChild(noDataColor);
+        
+        noDataItem.appendChild(noDataBox);
         noDataItem.appendChild(noDataLabel);
         this.elements.legendContainer.appendChild(noDataItem);
+
+        console.log('✅ Legend updated successfully with metadata formatting');
     }
 
     /**
@@ -511,6 +589,4 @@ class UIManager {
             this.elements.chartsSection.classList.add('hidden');
         }
     }
-}
-
-export { UIManager }; 
+} 

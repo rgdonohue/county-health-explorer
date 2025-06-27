@@ -8,8 +8,69 @@ import http.server
 import socketserver
 import urllib.request
 import urllib.parse
+import urllib.error
 import json
+import time
 from pathlib import Path
+
+def check_backend_health(backend_url="http://localhost:8000", timeout=5):
+    """
+    Check if the backend server is running and healthy
+    
+    Args:
+        backend_url: URL of the backend server
+        timeout: Timeout in seconds for the health check
+        
+    Returns:
+        tuple: (is_healthy: bool, message: str)
+    """
+    try:
+        # Try to connect to the backend health endpoint
+        health_url = f"{backend_url}/docs"  # FastAPI docs endpoint is always available
+        
+        request = urllib.request.Request(health_url)
+        with urllib.request.urlopen(request, timeout=timeout) as response:
+            if response.getcode() == 200:
+                return True, f"✅ Backend server is running at {backend_url}"
+            else:
+                return False, f"❌ Backend server responded with status {response.getcode()}"
+                
+    except urllib.error.URLError as e:
+        if hasattr(e, 'reason'):
+            if "Connection refused" in str(e.reason):
+                return False, f"❌ Backend server is not running at {backend_url}"
+            else:
+                return False, f"❌ Cannot reach backend server: {e.reason}"
+        else:
+            return False, f"❌ Backend server error: {e}"
+    except Exception as e:
+        return False, f"❌ Unexpected error checking backend: {e}"
+
+def wait_for_backend(backend_url="http://localhost:8000", max_wait=30):
+    """
+    Wait for backend to become available with a timeout
+    
+    Args:
+        backend_url: URL of the backend server
+        max_wait: Maximum time to wait in seconds
+        
+    Returns:
+        bool: True if backend becomes available, False if timeout
+    """
+    print(f"⏳ Waiting for backend server at {backend_url}...")
+    start_time = time.time()
+    
+    while time.time() - start_time < max_wait:
+        is_healthy, message = check_backend_health(backend_url, timeout=2)
+        if is_healthy:
+            print(message)
+            return True
+        
+        print(".", end="", flush=True)
+        time.sleep(1)
+    
+    print(f"\n❌ Timeout: Backend server did not start within {max_wait} seconds")
+    return False
 
 class ProxyHTTPRequestHandler(http.server.SimpleHTTPRequestHandler):
     """HTTP request handler that proxies API calls to the backend"""
@@ -78,8 +139,9 @@ class ProxyHTTPRequestHandler(http.server.SimpleHTTPRequestHandler):
         super().end_headers()
 
 def main():
-    """Start the development server"""
+    """Start the development server with backend health check"""
     port = 3000
+    backend_url = "http://localhost:8000"
     
     # Check if frontend directory exists
     frontend_dir = Path("frontend")
@@ -88,19 +150,51 @@ def main():
         print("Make sure you're running this from the project root.")
         return
     
-    print(f"🚀 Starting County Health Explorer development server...")
+    print("🏥 County Health Explorer - Development Server")
+    print("=" * 50)
+    
+    # Check if backend is running
+    print("🔍 Checking backend server status...")
+    is_healthy, health_message = check_backend_health(backend_url)
+    
+    if not is_healthy:
+        print(health_message)
+        print()
+        print("💡 To start the backend server, run:")
+        print("   cd backend && uvicorn app.main:app --reload --port 8000")
+        print()
+        
+        # Ask user if they want to wait for backend
+        try:
+            user_input = input("Would you like to wait for the backend to start? (y/N): ").strip().lower()
+            if user_input in ['y', 'yes']:
+                if not wait_for_backend(backend_url, max_wait=60):
+                    print("❌ Cannot start frontend without backend server")
+                    return
+            else:
+                print("❌ Cannot start frontend without backend server")
+                return
+        except KeyboardInterrupt:
+            print("\n👋 Cancelled by user")
+            return
+    else:
+        print(health_message)
+    
+    print()
+    print(f"🚀 Starting County Health Explorer frontend server...")
     print(f"📁 Serving files from: {frontend_dir.absolute()}")
     print(f"🌐 Frontend URL: http://localhost:{port}")
-    print(f"🔗 Backend API: http://localhost:8000/api")
-    print(f"📚 API Docs: http://localhost:8000/docs")
+    print(f"🔗 Backend API: {backend_url}/api")
+    print(f"📚 API Docs: {backend_url}/docs")
     print()
     print("Press Ctrl+C to stop the server")
+    print("=" * 50)
     
     try:
         with socketserver.TCPServer(("", port), ProxyHTTPRequestHandler) as httpd:
             httpd.serve_forever()
     except KeyboardInterrupt:
-        print("\n👋 Server stopped")
+        print("\n👋 Frontend server stopped")
     except OSError as e:
         if e.errno == 48:  # Address already in use
             print(f"❌ Port {port} is already in use")

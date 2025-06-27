@@ -18,26 +18,70 @@ router = APIRouter()
 
 
 def get_health_variables() -> List[Dict[str, str]]:
-    """Get list of available health variables from the database."""
+    """Get list of available health variables from the database with metadata."""
     try:
         db = get_db()
         with db.get_cursor() as conn:
             # Get all columns from county_health table
             result = conn.execute("DESCRIBE county_health").fetchall()
             
+            # Get metadata if available
+            metadata_result = conn.execute("""
+                SELECT variable_code, display_name, description, units, data_type, raw_variable
+                FROM variable_metadata
+            """).fetchall()
+            
+            # Create metadata lookup by raw variable name
+            metadata_lookup = {}
+            for meta_row in metadata_result:
+                var_code, display_name, description, units, data_type, raw_variable = meta_row
+                # Index by the raw variable name for exact matching
+                metadata_lookup[raw_variable] = {
+                    "variable_code": var_code,
+                    "display_name": display_name,
+                    "description": description,
+                    "units": units,
+                    "data_type": data_type,
+                    "raw_variable": raw_variable
+                }
+            
+            # Debug: print some metadata for troubleshooting
+            logger.info(f"Loaded {len(metadata_lookup)} metadata entries")
+            firearm_keys = [k for k in metadata_lookup.keys() if 'firearm' in k.lower()]
+            if firearm_keys:
+                logger.info(f"Found firearm metadata keys: {firearm_keys}")
+            else:
+                logger.warning("No firearm metadata found")
+            
             variables = []
             for row in result:
                 col_name = row[0]  # First column is the name
                 col_type = row[1]  # Second column is the type
+                
                 if "raw value" in col_name:
                     # Extract clean variable name
                     clean_name = col_name.replace(" raw value", "").lower().replace(" ", "_")
-                    variables.append({
+                    
+                    # Look up metadata by exact column name match
+                    var_meta = metadata_lookup.get(col_name)
+                    
+                    # Debug specific variables
+                    if 'firearm' in clean_name.lower():
+                        logger.info(f"Processing firearm variable: {col_name}, metadata found: {var_meta is not None}")
+                        if var_meta:
+                            logger.info(f"Firearm metadata: {var_meta}")
+                    
+                    variable_info = {
                         "name": clean_name,
-                        "display_name": col_name.replace(" raw value", ""),
+                        "display_name": var_meta["display_name"] if var_meta else col_name.replace(" raw value", ""),
                         "column": col_name,
-                        "type": "numeric"
-                    })
+                        "type": "numeric",
+                        "description": var_meta["description"] if var_meta else "",
+                        "units": var_meta["units"] if var_meta else "",
+                        "data_type": var_meta["data_type"] if var_meta else "numeric"
+                    }
+                    
+                    variables.append(variable_info)
             
             return variables
             
@@ -88,25 +132,7 @@ async def debug_columns():
 async def get_variables():
     """Get list of available variables and metadata."""
     try:
-        db = get_db()
-        with db.get_cursor() as conn:
-            # Get all columns from county_health table
-            result = conn.execute("DESCRIBE county_health").fetchall()
-            
-            variables = []
-            for row in result:
-                col_name = row[0]  # First column is the name
-                col_type = row[1]  # Second column is the type
-                if "raw value" in col_name:
-                    # Extract clean variable name
-                    clean_name = col_name.replace(" raw value", "").lower().replace(" ", "_")
-                    variables.append({
-                        "name": clean_name,
-                        "display_name": col_name.replace(" raw value", ""),
-                        "column": col_name,
-                        "type": "numeric"
-                    })
-        
+        variables = get_health_variables()
         return {
             "variables": variables,
             "count": len(variables)
@@ -134,15 +160,17 @@ async def get_variable_categories():
         
         for var in variables:
             name = var["display_name"].lower()
-            if any(term in name for term in ["death", "mortality", "life expectancy"]):
+            description = var.get("description", "").lower()
+            
+            if any(term in name for term in ["death", "mortality", "life expectancy", "fatalities", "suicide"]):
                 categories["mortality"].append(var)
             elif any(term in name for term in ["smoking", "drinking", "obesity", "physical inactivity"]):
                 categories["behavioral"].append(var)
-            elif any(term in name for term in ["health days", "diabetes", "hiv", "mental"]):
+            elif any(term in name for term in ["health days", "diabetes", "hiv", "mental", "distress"]):
                 categories["clinical"].append(var)
-            elif any(term in name for term in ["income", "poverty", "education", "unemployment"]):
+            elif any(term in name for term in ["income", "poverty", "education", "unemployment", "housing", "associations"]):
                 categories["social"].append(var)
-            elif any(term in name for term in ["air pollution", "water", "housing"]):
+            elif any(term in name for term in ["air pollution", "water", "housing", "climate", "environment"]):
                 categories["physical_environment"].append(var)
             else:
                 categories["demographics"].append(var)
@@ -156,127 +184,363 @@ async def get_variable_categories():
 
 @router.get("/stats")
 async def get_variable_stats(var: str = Query(..., description="Variable name")):
-    """Get summary statistics for a variable."""
+    """Get summary statistics for a health variable."""
     try:
+        # Validate variable and get column name
         column_name = validate_variable(var)
+        
+        # Get variable metadata for context
+        variables = get_health_variables()
+        variable_info = next((v for v in variables if v["name"] == var), None)
         
         db = get_db()
         with db.get_cursor() as conn:
-            # Get statistics, handling potential string values
+            # Get statistics with proper casting for numeric operations
             result = conn.execute(f"""
                 SELECT 
-                    COUNT(*) as count,
-                    COUNT(CASE WHEN "{column_name}" IS NOT NULL AND "{column_name}" != '' THEN 1 END) as valid_count,
-                    AVG(CASE WHEN "{column_name}" ~ '^[0-9.]+$' THEN CAST("{column_name}" AS DOUBLE) END) as mean,
-                    STDDEV(CASE WHEN "{column_name}" ~ '^[0-9.]+$' THEN CAST("{column_name}" AS DOUBLE) END) as std,
-                    MIN(CASE WHEN "{column_name}" ~ '^[0-9.]+$' THEN CAST("{column_name}" AS DOUBLE) END) as min,
-                    MAX(CASE WHEN "{column_name}" ~ '^[0-9.]+$' THEN CAST("{column_name}" AS DOUBLE) END) as max
-                FROM counties_with_geometry
-                WHERE geometry IS NOT NULL
+                    COUNT(CASE WHEN "{column_name}" IS NOT NULL AND "{column_name}" != '' 
+                              AND "{column_name}" ~ '^[0-9.]+$' THEN 1 END) as count,
+                    AVG(CASE WHEN "{column_name}" ~ '^[0-9.]+$' 
+                             THEN CAST("{column_name}" AS DOUBLE) END) as mean,
+                    STDDEV(CASE WHEN "{column_name}" ~ '^[0-9.]+$' 
+                                THEN CAST("{column_name}" AS DOUBLE) END) as std,
+                    MIN(CASE WHEN "{column_name}" ~ '^[0-9.]+$' 
+                             THEN CAST("{column_name}" AS DOUBLE) END) as min,
+                    MAX(CASE WHEN "{column_name}" ~ '^[0-9.]+$' 
+                             THEN CAST("{column_name}" AS DOUBLE) END) as max,
+                    MEDIAN(CASE WHEN "{column_name}" ~ '^[0-9.]+$' 
+                                THEN CAST("{column_name}" AS DOUBLE) END) as median
+                FROM county_health
+                WHERE "{column_name}" IS NOT NULL
             """).fetchone()
             
             if not result:
                 raise HTTPException(status_code=404, detail="No data found for variable")
             
-            return {
+            # Smart unit and description detection
+            smart_units = ""
+            smart_description = ""
+            if var == 'premature_death':
+                smart_units = "years lost per 100,000"
+                smart_description = "Years of potential life lost before age 75 per 100,000 population (age-adjusted)"
+            elif var == 'hiv_prevalence':
+                smart_units = "per 100,000 population"
+                smart_description = "Number of people aged 13 years and older living with a diagnosis of HIV per 100,000 population"
+            elif 'health_days' in var:
+                smart_units = "days per month"
+                smart_description = "Average number of unhealthy days reported in past 30 days (age-adjusted)"
+            elif var == 'traffic_volume':
+                smart_units = "vehicles per meter per day"
+                smart_description = "Average daily traffic volume per meter of road length"
+            elif var in ['firearm_fatalities', 'drug_overdose_deaths'] or ('death' in var and 'premature' not in var) or 'mortality' in var:
+                smart_units = "per 100,000 population"
+                smart_description = "Population-standardized rate for fair comparison"
+            elif 'climate' in var or 'adverse_climate' in var:
+                smart_units = "0-3 categories"
+                smart_description = "Climate threshold categories met (heat, drought, disasters)"
+            elif 'obesity' in var or 'smoking' in var or 'physical_inactivity' in var:
+                smart_units = "percentage"
+                smart_description = "Percentage of adult population"
+            elif 'income' in var or 'poverty' in var:
+                smart_units = "dollars" if 'income' in var else "percentage"
+                smart_description = "Economic indicator"
+            elif 'education' in var:
+                smart_units = "percentage"
+                smart_description = "Educational attainment indicator"
+            
+            # Format the response with metadata
+            response = {
                 "variable": var,
-                "count": result[1],  # valid_count
-                "mean": round(result[2], 3) if result[2] is not None else None,
-                "std": round(result[3], 3) if result[3] is not None else None,
-                "min": result[4],
-                "max": result[5]
+                "display_name": variable_info["display_name"] if variable_info else var.replace("_", " ").title(),
+                "description": variable_info["description"] if (variable_info and variable_info["description"]) else smart_description,
+                "units": variable_info["units"] if (variable_info and variable_info["units"]) else smart_units,
+                "data_type": variable_info["data_type"] if variable_info else "numeric",
+                "count": int(result[0]) if result[0] else 0,
+                "mean": round(float(result[1]), 2) if result[1] else None,
+                "std": round(float(result[2]), 2) if result[2] else None,
+                "min": round(float(result[3]), 2) if result[3] else None,
+                "max": round(float(result[4]), 2) if result[4] else None,
+                "median": round(float(result[5]), 2) if result[5] else None
             }
+            
+            return response
             
     except HTTPException:
         raise
     except Exception as e:
-        logger.error(f"Error in get_variable_stats: {e}")
-        raise HTTPException(status_code=500, detail="Internal server error")
+        logger.error(f"Error getting stats for {var}: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail=f"Failed to get statistics: {str(e)}")
+
+
+@router.get("/stats/transformed")
+async def get_transformed_variable_stats(var: str = Query(..., description="Variable name")):
+    """Get summary statistics for a health variable with proper transformations applied."""
+    try:
+        # Validate variable and get column name
+        column_name = validate_variable(var)
+        
+        # Get variable metadata for context
+        variables = get_health_variables()
+        variable_info = next((v for v in variables if v["name"] == var), None)
+        
+        db = get_db()
+        with db.get_cursor() as conn:
+            # Get statistics with proper casting for numeric operations
+            result = conn.execute(f"""
+                SELECT 
+                    COUNT(CASE WHEN "{column_name}" IS NOT NULL AND "{column_name}" != '' 
+                              AND "{column_name}" ~ '^[0-9.]+$' THEN 1 END) as count,
+                    AVG(CASE WHEN "{column_name}" ~ '^[0-9.]+$' 
+                             THEN CAST("{column_name}" AS DOUBLE) END) as mean,
+                    STDDEV(CASE WHEN "{column_name}" ~ '^[0-9.]+$' 
+                                THEN CAST("{column_name}" AS DOUBLE) END) as std,
+                    MIN(CASE WHEN "{column_name}" ~ '^[0-9.]+$' 
+                             THEN CAST("{column_name}" AS DOUBLE) END) as min,
+                    MAX(CASE WHEN "{column_name}" ~ '^[0-9.]+$' 
+                             THEN CAST("{column_name}" AS DOUBLE) END) as max,
+                    MEDIAN(CASE WHEN "{column_name}" ~ '^[0-9.]+$' 
+                                THEN CAST("{column_name}" AS DOUBLE) END) as median
+                FROM county_health
+                WHERE "{column_name}" IS NOT NULL
+            """).fetchone()
+            
+            if not result:
+                raise HTTPException(status_code=404, detail="No data found for variable")
+            
+            # Define transformation logic (matching frontend metadata.js)
+            def transform_value(value, var_name):
+                # Variables that need decimal to percentage conversion
+                percentage_vars = [
+                    'unemployment', 'adult_obesity', 'adult_smoking', 'physical_inactivity',
+                    'mammography_screening', 'flu_vaccinations', 'children_in_poverty'
+                ]
+                
+                if value is None:
+                    return None
+                    
+                if var_name in percentage_vars:
+                    return float(value) * 100  # Convert decimal to percentage
+                
+                return float(value)
+            
+            # Smart unit and description detection with transformation awareness
+            smart_units = ""
+            smart_description = ""
+            
+            # Check if this variable needs percentage transformation
+            percentage_vars = [
+                'unemployment', 'adult_obesity', 'adult_smoking', 'physical_inactivity',
+                'mammography_screening', 'flu_vaccinations', 'children_in_poverty'
+            ]
+            
+            if var == 'premature_death':
+                smart_units = "years lost per 100,000"
+                smart_description = "Years of potential life lost before age 75 per 100,000 population (age-adjusted)"
+            elif var == 'hiv_prevalence':
+                smart_units = "per 100,000 population"
+                smart_description = "Number of people aged 13 years and older living with a diagnosis of HIV per 100,000 population"
+            elif var in percentage_vars:
+                smart_units = "percentage"
+                if var == 'unemployment':
+                    smart_description = "Percentage of population ages 16 and older unemployed but seeking work"
+                elif var == 'mammography_screening':
+                    smart_description = "Percentage of female Medicare enrollees ages 65-74 who received an annual mammography screening"
+                elif var == 'adult_obesity':
+                    smart_description = "Percentage of adults aged 20 and older with obesity (BMI ≥ 30)"
+                else:
+                    smart_description = "Percentage value (transformed from decimal)"
+            elif 'health_days' in var:
+                smart_units = "days per month"
+                smart_description = "Average number of unhealthy days reported in past 30 days (age-adjusted)"
+            elif var == 'traffic_volume':
+                smart_units = "vehicles per meter per day"
+                smart_description = "Average daily traffic volume per meter of road length"
+            elif var in ['firearm_fatalities', 'drug_overdose_deaths'] or ('death' in var and 'premature' not in var) or 'mortality' in var:
+                smart_units = "per 100,000 population"
+                smart_description = "Population-standardized rate for fair comparison"
+            elif 'climate' in var or 'adverse_climate' in var:
+                smart_units = "0-3 categories"
+                smart_description = "Climate threshold categories met (heat, drought, disasters)"
+            
+            # Apply transformations to statistics
+            transformed_stats = {
+                "count": int(result[0]) if result[0] else 0,
+                "mean": transform_value(result[1], var),
+                "std": transform_value(result[2], var),
+                "min": transform_value(result[3], var),
+                "max": transform_value(result[4], var),
+                "median": transform_value(result[5], var)
+            }
+            
+            # Format the response with metadata
+            response = {
+                "variable": var,
+                "display_name": variable_info["display_name"] if variable_info else var.replace("_", " ").title(),
+                "description": variable_info["description"] if (variable_info and variable_info["description"]) else smart_description,
+                "units": variable_info["units"] if (variable_info and variable_info["units"]) else smart_units,
+                "data_type": variable_info["data_type"] if variable_info else "numeric",
+                "transformed": var in percentage_vars,
+                **transformed_stats
+            }
+            
+            # Round values for display
+            for key in ['mean', 'std', 'min', 'max', 'median']:
+                if response[key] is not None:
+                    response[key] = round(response[key], 2)
+            
+            return response
+            
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error getting transformed stats for {var}: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail=f"Failed to get statistics: {str(e)}")
 
 
 @router.get("/choropleth")
 async def get_choropleth(var: str = Query(..., description="Variable name")):
-    """Return GeoJSON with joined data and class breaks for choropleth mapping."""
+    """Get choropleth data for a health variable."""
     try:
+        # Validate variable and get column name
         column_name = validate_variable(var)
+        
+        # Get variable metadata
+        variables = get_health_variables()
+        variable_info = next((v for v in variables if v["name"] == var), None)
         
         db = get_db()
         with db.get_cursor() as conn:
-            # Get data with geometries
+            # Use direct table join since view may not exist
             result = conn.execute(f"""
                 SELECT 
-                    "5-digit FIPS Code" as fips,
-                    "Name" as county_name,
-                    "State Abbreviation" as state,
-                    "{column_name}" as value,
-                    ST_AsGeoJSON(geometry) as geometry_json
-                FROM counties_with_geometry
-                WHERE geometry IS NOT NULL 
-                  AND "{column_name}" IS NOT NULL 
-                  AND "{column_name}" != ''
-                  AND "{column_name}" ~ '^[0-9.]+$'
+                    h."5-digit FIPS Code" as fips_code,
+                    h."Name" as county_name,
+                    h."State Abbreviation" as state_name,
+                    CASE WHEN h."{column_name}" ~ '^[0-9.]+$' 
+                         THEN CAST(h."{column_name}" AS DOUBLE) END as value,
+                    ST_AsGeoJSON(s.geometry) as geometry_json
+                FROM county_health h
+                INNER JOIN county_spatial s ON h."5-digit FIPS Code" = s.fips_code
+                WHERE s.geometry IS NOT NULL
+                  AND h."{column_name}" IS NOT NULL
+                  AND h."{column_name}" != ''
+                  AND h."{column_name}" ~ '^[0-9.]+$'
+                ORDER BY h."5-digit FIPS Code"
             """).fetchall()
             
             if not result:
-                raise HTTPException(status_code=404, detail="No valid data found for variable")
+                raise HTTPException(status_code=404, detail="No valid data found for choropleth")
             
-            # Extract numeric values for classification
-            values = []
-            features = []
-            
-            for row in result:
-                try:
-                    value = float(row[3])
-                    values.append(value)
-                    
-                    # Parse geometry JSON
-                    geometry = json.loads(row[4])
-                    
-                    features.append({
-                        "type": "Feature",
-                        "properties": {
-                            "fips": row[0],
-                            "county_name": row[1],
-                            "state": row[2],
-                            "value": value
-                        },
-                        "geometry": geometry
-                    })
-                except (ValueError, json.JSONDecodeError):
-                    continue
+            # Calculate quantile breaks for classification
+            values = [row[3] for row in result if row[3] is not None]
             
             if not values:
-                raise HTTPException(status_code=404, detail="No valid numeric data found")
+                raise HTTPException(status_code=404, detail="No valid numeric data for choropleth")
             
-            # Create class breaks using quantiles
-            values_array = np.array(values)
-            quantiles = np.quantile(values_array, [0, 0.2, 0.4, 0.6, 0.8, 1.0])
+            # Sort values for quantile calculation
+            sorted_values = sorted(values)
+            n = len(sorted_values)
             
-            # Assign classes to features
-            for feature in features:
-                value = feature["properties"]["value"]
-                class_num = 1
-                for i, threshold in enumerate(quantiles[1:], 1):
-                    if value <= threshold:
-                        class_num = i
-                        break
-                feature["properties"]["class"] = class_num
+            if n < 5:
+                # Not enough data for proper quantiles
+                breaks = [min(values), max(values)]
+            else:
+                # Calculate quantile breaks (quintiles)
+                breaks = [
+                    sorted_values[0],  # min
+                    sorted_values[max(0, int(n * 0.2) - 1)],  # 20th percentile
+                    sorted_values[max(0, int(n * 0.4) - 1)],  # 40th percentile
+                    sorted_values[max(0, int(n * 0.6) - 1)],  # 60th percentile
+                    sorted_values[max(0, int(n * 0.8) - 1)],  # 80th percentile
+                    sorted_values[-1]   # max
+                ]
+                # Remove duplicates and sort
+                breaks = sorted(list(set(breaks)))
             
-            return {
+            # Assign classes based on breaks
+            def get_class(value):
+                if value is None:
+                    return None
+                for i in range(len(breaks) - 1):
+                    if value <= breaks[i + 1]:
+                        return i + 1
+                return len(breaks) - 1
+            
+            # Build GeoJSON
+            features = []
+            for row in result:
+                fips_code, county_name, state_name, value, geometry_json = row
+                
+                # Parse the geometry JSON
+                try:
+                    import json
+                    geometry = json.loads(geometry_json) if geometry_json else None
+                except Exception as e:
+                    logger.warning(f"Failed to parse geometry for county {fips_code}: {e}")
+                    continue
+                
+                if not geometry:
+                    continue
+                
+                feature = {
+                    "type": "Feature",
+                    "properties": {
+                        "fips": fips_code,
+                        "county_name": county_name,
+                        "state_name": state_name,
+                        "value": value,
+                        "class": get_class(value)
+                    },
+                    "geometry": geometry
+                }
+                features.append(feature)
+            
+            # Smart unit detection for metadata
+            smart_units = ""
+            smart_description = ""
+            if var == 'premature_death':
+                smart_units = "years lost per 100,000"
+                smart_description = "Years of potential life lost before age 75 per 100,000 population (age-adjusted)"
+            elif var == 'hiv_prevalence':
+                smart_units = "per 100,000 population"
+                smart_description = "Number of people aged 13 years and older living with a diagnosis of HIV per 100,000 population"
+            elif var in ['firearm_fatalities', 'drug_overdose_deaths'] or ('death' in var and 'premature' not in var) or 'mortality' in var:
+                smart_units = "per 100,000 population"
+                smart_description = "Population-standardized rate"
+            elif 'climate' in var:
+                smart_units = "0-3 categories"
+                smart_description = "Climate threshold categories met"
+            elif 'obesity' in var or 'smoking' in var:
+                smart_units = "percentage"
+                smart_description = "Percentage of adult population"
+
+            # Prepare response with metadata
+            response = {
                 "type": "FeatureCollection",
                 "features": features,
                 "metadata": {
                     "variable": var,
-                    "count": len(features),
-                    "class_breaks": quantiles.tolist()
+                    "display_name": variable_info["display_name"] if variable_info else var.replace("_", " ").title(),
+                    "description": variable_info["description"] if (variable_info and variable_info["description"]) else smart_description,
+                    "units": variable_info["units"] if (variable_info and variable_info["units"]) else smart_units,
+                    "data_type": variable_info["data_type"] if variable_info else "numeric",
+                    "total_features": len(features),
+                    "class_breaks": breaks,
+                    "value_range": {
+                        "min": min(values),
+                        "max": max(values),
+                        "count": len(values)
+                    }
                 }
             }
+            
+            return response
             
     except HTTPException:
         raise
     except Exception as e:
-        logger.error(f"Error in get_choropleth: {e}")
-        raise HTTPException(status_code=500, detail="Internal server error")
+        logger.error(f"Error getting choropleth for {var}: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail=f"Failed to get choropleth data: {str(e)}")
 
 
 @router.get("/corr")

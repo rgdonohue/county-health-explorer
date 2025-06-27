@@ -89,36 +89,69 @@ class ApiClient {
     }
 
     /**
-     * Get summary statistics for a health variable
+     * Get variable statistics with metadata and transformations
      */
-    async getStatistics(variable) {
-        if (!variable) {
-            throw new Error('Variable parameter is required');
+    async getVariableStats(variable) {
+        try {
+            console.log(`📊 Fetching transformed statistics for variable: ${variable}`);
+            
+            const response = await fetch(`${this.baseUrl}/stats/transformed?var=${encodeURIComponent(variable)}`, {
+                method: 'GET',
+                headers: {
+                    'Content-Type': 'application/json',
+                }
+            });
+
+            if (!response.ok) {
+                const errorData = await response.json();
+                throw new Error(errorData.detail || `HTTP ${response.status}: ${response.statusText}`);
+            }
+
+            const data = await response.json();
+            
+            console.log(`✅ Received transformed statistics for ${variable}:`, data);
+            
+            return data;
+            
+        } catch (error) {
+            console.error(`❌ Failed to fetch statistics for ${variable}:`, error);
+            throw error;
         }
-        
-        return await this.request(`/stats?var=${encodeURIComponent(variable)}`);
     }
 
     /**
-     * Get choropleth data (GeoJSON with health data) for mapping
+     * Get choropleth data with metadata
      */
-    async getChoroplethData(variable) {
-        if (!variable) {
-            throw new Error('Variable parameter is required');
+    async getChoropleth(variable) {
+        try {
+            console.log(`🗺️ Fetching choropleth data for variable: ${variable}`);
+            
+            const response = await fetch(`${this.baseUrl}/choropleth?var=${encodeURIComponent(variable)}`, {
+                method: 'GET',
+                headers: {
+                    'Content-Type': 'application/json',
+                }
+            });
+
+            if (!response.ok) {
+                const errorData = await response.json();
+                throw new Error(errorData.detail || `HTTP ${response.status}: ${response.statusText}`);
+            }
+
+            const data = await response.json();
+            
+            console.log(`✅ Received choropleth data for ${variable}:`, {
+                type: data.type,
+                features: data.features?.length || 0,
+                metadata: data.metadata
+            });
+            
+            return data;
+
+        } catch (error) {
+            console.error(`❌ Failed to fetch choropleth data for ${variable}:`, error);
+            throw error;
         }
-        
-        const data = await this.request(`/choropleth?var=${encodeURIComponent(variable)}`);
-        
-        // Validate GeoJSON structure
-        if (!data.type || data.type !== 'FeatureCollection') {
-            throw new Error('Invalid GeoJSON response from choropleth endpoint');
-        }
-        
-        if (!Array.isArray(data.features)) {
-            throw new Error('Invalid features array in GeoJSON response');
-        }
-        
-        return data;
     }
 
     /**

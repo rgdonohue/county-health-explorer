@@ -8,6 +8,8 @@ import logging
 from pathlib import Path
 from typing import Dict, Any, Optional
 import pandas as pd
+import geopandas as gpd
+import duckdb
 
 from .database import get_db, DatabaseManager
 
@@ -196,15 +198,53 @@ class CountyHealthETL:
         
         try:
             with self.db.get_cursor() as conn:
+                # First, let's identify and cast numeric columns properly
+                columns_result = conn.execute("DESCRIBE county_health").fetchall()
+                
+                # Build a list of columns with proper casting for numeric raw value columns
+                column_selects = []
+                for col_name, col_type in columns_result:
+                    if "raw value" in col_name:
+                        # Cast raw value columns to DOUBLE for proper numeric operations
+                        column_selects.append(f'CAST("{col_name}" AS DOUBLE) AS "{col_name}"')
+                    elif col_name in ['5-digit FIPS Code', 'Name', 'State Abbreviation']:
+                        # Keep key string columns
+                        column_selects.append(f'"{col_name}"')
+                    else:
+                        # Keep other columns as-is
+                        column_selects.append(f'"{col_name}"')
+                
+                # Create the properly typed view
+                conn.execute(f"""
+                    CREATE OR REPLACE VIEW county_health_joined AS
+                    SELECT 
+                        h."5-digit FIPS Code" as fips_code,
+                        h."Name" as county_name,
+                        h."State Abbreviation" as state_name,
+                        {", ".join([f'h.{col}' for col in column_selects])},
+                        s.geometry
+                    FROM county_health h
+                    INNER JOIN county_spatial s ON h."5-digit FIPS Code" = s.fips_code
+                    WHERE s.geometry IS NOT NULL
+                """)
+                
+                # Create an alternative simpler view for quick access
                 conn.execute("""
                     CREATE OR REPLACE VIEW counties_with_geometry AS
                     SELECT 
-                        h.*,
-                        s.county_name as spatial_county_name,
-                        s.state_fp,
+                        h."5-digit FIPS Code" as fips_code,
+                        h."Name" as county_name,
+                        h."State Abbreviation" as state_name,
+                        CAST(h."Firearm Fatalities raw value" AS DOUBLE) as firearm_fatalities,
+                        CAST(h."Adverse Climate Events raw value" AS DOUBLE) as adverse_climate_events,
+                        CAST(h."Adult Obesity raw value" AS DOUBLE) as adult_obesity,
+                        CAST(h."Premature Death raw value" AS DOUBLE) as premature_death,
+                        CAST(h."Poor Physical Health Days raw value" AS DOUBLE) as poor_physical_health_days,
+                        CAST(h."Poor Mental Health Days raw value" AS DOUBLE) as poor_mental_health_days,
                         s.geometry
                     FROM county_health h
-                    LEFT JOIN county_spatial s ON h."5-digit FIPS Code" = s.fips_code
+                    INNER JOIN county_spatial s ON h."5-digit FIPS Code" = s.fips_code
+                    WHERE s.geometry IS NOT NULL
                 """)
                 
                 logger.info("Created counties_with_geometry view")
@@ -286,42 +326,63 @@ class CountyHealthETL:
         Run the complete ETL pipeline.
         
         Args:
-            health_csv_path: Path to county health CSV file
-            spatial_geojson_path: Path to counties GeoJSON file
+            health_csv_path: Path to health data CSV
+            spatial_geojson_path: Path to spatial GeoJSON
             
         Returns:
-            ETL results and validation summary
+            Dictionary with ETL results and validation metrics
         """
         logger.info("Starting full ETL pipeline")
         
         try:
-            # Load health data
+            results = {}
+            
+            # Step 1: Load health data
+            logger.info("Step 1: Loading health data")
             health_rows = self.load_county_health_data(health_csv_path)
+            results['health_rows_loaded'] = health_rows
             
-            # Load spatial data
+            # Step 2: Load spatial data
+            logger.info("Step 2: Loading spatial data")
             spatial_rows = self.load_spatial_data(spatial_geojson_path)
+            results['spatial_rows_loaded'] = spatial_rows
             
-            # Create joined view
+            # Step 3: Create joined view
+            logger.info("Step 3: Creating joined view")
             self.create_joined_view()
             
-            # Validate data
-            validation_results = self.validate_data()
+            # Step 4: Load variable metadata
+            logger.info("Step 4: Loading variable metadata")
+            data_dir = Path(health_csv_path).parent
+            metadata = load_variable_metadata(data_dir)
             
-            results = {
-                'health_rows_loaded': health_rows,
-                'spatial_rows_loaded': spatial_rows,
-                'validation': validation_results,
-                'success': True
-            }
+            with self.db.get_cursor() as conn:
+                create_metadata_table(conn, metadata)
             
+            results['metadata_vars_loaded'] = len(metadata)
+            
+            # Step 5: Validate results
+            logger.info("Step 5: Validating ETL results")
+            validation = self.validate_data()
+            results['validation'] = validation
+            
+            # Step 6: Final success check
+            if validation['join_success_rate'] < 90:
+                logger.warning(f"Low join success rate: {validation['join_success_rate']:.1f}%")
+            
+            results['success'] = True
             logger.info("ETL pipeline completed successfully")
+            
             return results
             
         except Exception as e:
-            logger.error(f"ETL pipeline failed: {e}")
+            logger.error(f"ETL pipeline failed: {e}", exc_info=True)
             return {
                 'success': False,
-                'error': str(e)
+                'error': str(e),
+                'health_rows_loaded': results.get('health_rows_loaded', 0),
+                'spatial_rows_loaded': results.get('spatial_rows_loaded', 0),
+                'metadata_vars_loaded': results.get('metadata_vars_loaded', 0)
             }
 
 
@@ -355,6 +416,172 @@ def run_etl():
         print(f"ETL failed: {results['error']}")
     
     return results
+
+
+def load_variable_metadata(data_dir: Path) -> Dict[str, Dict[str, str]]:
+    """
+    Load variable metadata from DataDictionary_2025.csv.
+    
+    Returns:
+        Dictionary mapping variable codes to metadata (description, units, etc.)
+    """
+    logger.info("Loading variable metadata from data dictionary")
+    
+    dict_path = data_dir / "DataDictionary_2025.csv"
+    if not dict_path.exists():
+        logger.warning(f"Data dictionary not found at {dict_path}")
+        return {}
+    
+    try:
+        df = pd.read_csv(dict_path)
+        logger.info(f"Loaded data dictionary with {len(df)} entries")
+        
+        metadata = {}
+        
+        for _, row in df.iterrows():
+            var_name = row['Variable Name']
+            description = row['Description']
+            measure = row.get('Measure', '')
+            
+            # Only process raw value variables
+            if 'rawvalue' in var_name:
+                # Extract base variable code (e.g., v001 from v001_rawvalue)
+                var_code = var_name.split('_')[0]
+                
+                # Determine units and data type from description
+                units = extract_units_from_description(description)
+                data_type = determine_data_type(description)
+                
+                # Clean up the description
+                clean_description = description.strip()
+                if clean_description.endswith('.'):
+                    clean_description = clean_description[:-1]
+                
+                metadata[var_code] = {
+                    'description': clean_description,
+                    'measure': measure.strip() if measure else '',
+                    'units': units,
+                    'data_type': data_type,
+                    'raw_variable': var_name,
+                    'measure_name': measure.strip() if measure else ''
+                }
+        
+        logger.info(f"Processed metadata for {len(metadata)} health variables")
+        return metadata
+        
+    except Exception as e:
+        logger.error(f"Failed to load variable metadata: {e}")
+        return {}
+
+
+def extract_units_from_description(description: str) -> str:
+    """Extract units from a variable description."""
+    description = description.lower()
+    
+    # Common unit patterns
+    if 'per 100,000' in description:
+        return 'per 100,000 population'
+    elif 'per 1,000' in description:
+        return 'per 1,000 population'
+    elif 'per 10,000' in description:
+        return 'per 10,000 population'
+    elif 'percentage' in description or 'percent' in description:
+        return 'percentage'
+    elif 'years' in description and 'life' in description:
+        return 'years'
+    elif 'days' in description:
+        return 'days'
+    elif 'ratio' in description:
+        return 'ratio'
+    elif 'index' in description:
+        return 'index'
+    elif 'number of' in description and 'per' not in description:
+        return 'count'
+    elif 'rate' in description:
+        return 'rate'
+    else:
+        return 'numeric'
+
+
+def determine_data_type(description: str) -> str:
+    """Determine the appropriate data type category."""
+    description = description.lower()
+    
+    if any(term in description for term in ['death', 'mortality', 'fatalities', 'life expectancy']):
+        return 'mortality'
+    elif any(term in description for term in ['percentage', 'percent']):
+        return 'percentage'
+    elif any(term in description for term in ['rate', 'per 100,000', 'per 1,000']):
+        return 'rate'
+    elif any(term in description for term in ['income', 'dollar']):
+        return 'currency'
+    elif 'index' in description:
+        return 'index'
+    elif 'ratio' in description:
+        return 'ratio'
+    else:
+        return 'numeric'
+
+
+def create_metadata_table(conn: duckdb.DuckDBPyConnection, metadata: Dict[str, Dict[str, str]]):
+    """Create and populate the variable metadata table."""
+    logger.info("Creating variable metadata table")
+    
+    # Drop and recreate the table to ensure proper schema
+    conn.execute("DROP TABLE IF EXISTS variable_metadata")
+    
+    # Create the table
+    conn.execute("""
+        CREATE TABLE variable_metadata (
+            variable_code VARCHAR PRIMARY KEY,
+            display_name VARCHAR,
+            description TEXT,
+            measure VARCHAR,
+            units VARCHAR,
+            data_type VARCHAR,
+            raw_variable VARCHAR,
+            measure_name VARCHAR
+        )
+    """)
+    
+    # Insert metadata
+    for var_code, meta in metadata.items():
+        # Create display name from description
+        display_name = create_display_name(meta['description'])
+        
+        conn.execute("""
+            INSERT INTO variable_metadata 
+            (variable_code, display_name, description, measure, units, data_type, raw_variable, measure_name)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+        """, [
+            var_code,
+            display_name,
+            meta['description'],
+            meta['measure'],
+            meta['units'],
+            meta['data_type'],
+            meta['raw_variable'],
+            meta['measure_name']
+        ])
+    
+    logger.info(f"Inserted metadata for {len(metadata)} variables")
+
+
+def create_display_name(description: str) -> str:
+    """Create a clean display name from the description."""
+    # Take the first part of the description, usually the main concept
+    parts = description.split('.')
+    if len(parts) > 1:
+        # Use the first sentence if it's descriptive enough
+        first_part = parts[0].strip()
+        if len(first_part) > 10:
+            return first_part
+    
+    # Otherwise use the full description, truncated if too long
+    if len(description) > 60:
+        return description[:57] + "..."
+    
+    return description
 
 
 if __name__ == "__main__":

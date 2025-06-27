@@ -9,6 +9,7 @@ import { ApiClient } from './api.js';
 import { MapRenderer } from './map.js';
 import { UIManager } from './ui.js';
 import { utils } from './utils.js';
+import { getVariableMetadata, transformValue, formatValue } from './metadata.js';
 
 /**
  * Central Application State Management
@@ -170,7 +171,7 @@ class CountyHealthExplorer {
             console.log(`🗺️ Initializing map with variable: ${AppState.currentVariable}`);
             
             // Load choropleth data for current variable
-            await this.loadChoroplethData(AppState.currentVariable);
+            await this.loadChoropleth(AppState.currentVariable);
             
             // Render the map
             await this.renderMap();
@@ -212,7 +213,7 @@ class CountyHealthExplorer {
             this.ui.hideCountyInfo();
             
             // Load new data
-            await this.loadChoroplethData(newVariable);
+            await this.loadChoropleth(newVariable);
             await this.loadStatistics(newVariable);
             
             // Update the map
@@ -230,20 +231,63 @@ class CountyHealthExplorer {
     }
 
     /**
-     * Load choropleth data for a variable
+     * Load and render choropleth map with proper metadata handling
      */
-    async loadChoroplethData(variable) {
-        console.log(`📍 Loading choropleth data for ${variable}...`);
-        
+    async loadChoropleth(variable) {
         try {
-            const data = await this.api.getChoroplethData(variable);
-            AppState.data.choroplethData = data;
+            console.log(`🗺️ Loading choropleth for variable: ${variable}`);
             
-            console.log(`✅ Loaded ${data.features?.length || 0} county features`);
+            this.ui.setLoading(true);
             
+            // Load choropleth data and statistics in parallel
+            const [choroplethResponse, statsResponse] = await Promise.all([
+                this.api.getChoropleth(variable),
+                this.api.getVariableStats(variable)
+            ]);
+            
+            if (!choroplethResponse?.features?.length) {
+                throw new Error('No choropleth data received');
+            }
+
+            console.log('📊 Received choropleth data:', {
+                features: choroplethResponse.features.length,
+                metadata: choroplethResponse.metadata
+            });
+
+            console.log('📈 Received statistics:', statsResponse);
+
+            // Store current data
+            this.currentChoroplethData = choroplethResponse;
+            this.currentStats = statsResponse;
+
+            // Update UI with proper metadata context
+            this.ui.updateStatistics(statsResponse, variable, AppState.data.variables);
+            this.ui.updateLegend(choroplethResponse, statsResponse, variable, AppState.data.variables);
+
+            // Render map with click handler
+            const colorInfo = await this.mapRenderer.renderChoropleth(choroplethResponse, {
+                variable: variable,
+                statistics: statsResponse,
+                metadata: choroplethResponse.metadata,
+                onCountyClick: (countyData) => this.handleCountyClick(countyData, variable)
+            });
+
+            console.log('🎨 Color scale info:', colorInfo);
+
+            // Enable analysis buttons
+            this.ui.enableAnalysisButtons();
+
+            // Update app state
+            AppState.currentVariable = variable;
+            AppState.mapLoaded = true;
+
+            console.log(`✅ Successfully loaded ${variable} choropleth`);
+
         } catch (error) {
-            console.error(`❌ Failed to load choropleth data for ${variable}:`, error);
-            throw error;
+            console.error(`❌ Failed to load choropleth for ${variable}:`, error);
+            this.ui.showError(`Failed to load map data for ${variable}: ${error.message}`);
+        } finally {
+            this.ui.setLoading(false);
         }
     }
 
@@ -254,17 +298,20 @@ class CountyHealthExplorer {
         console.log(`📈 Loading statistics for ${variable}...`);
         
         try {
-            const stats = await this.api.getStatistics(variable);
-            AppState.data.statistics = stats;
+            const stats = await this.api.getVariableStats(variable);
+            this.currentStats = stats;
             
-            // Update UI with statistics
-            this.ui.updateStatistics(stats);
+            // Update statistics display with metadata
+            this.ui.updateStatistics(stats, variable, AppState.data.variables);
             
-            console.log(`✅ Loaded statistics for ${variable}:`, stats);
+            // Update variable description using metadata system
+            this.ui.updateVariableDescription(variable, AppState.data.variables, stats);
+            
+            console.log(`✅ Statistics loaded for ${variable}:`, stats);
             
         } catch (error) {
             console.error(`❌ Failed to load statistics for ${variable}:`, error);
-            // Don't throw - statistics are non-critical for map display
+            this.ui.showError(`Failed to load statistics for ${variable}: ${error.message}`);
         }
     }
 
@@ -292,7 +339,7 @@ class CountyHealthExplorer {
             );
             
             // Update legend
-            this.ui.updateLegend(AppState.data.choroplethData, AppState.data.statistics);
+            this.ui.updateLegend(AppState.data.choroplethData, AppState.data.statistics, AppState.currentVariable, AppState.data.variables);
             
             console.log('✅ Map rendered successfully');
             
@@ -305,14 +352,14 @@ class CountyHealthExplorer {
     /**
      * Handle county click/selection
      */
-    async handleCountyClick(countyData) {
+    async handleCountyClick(countyData, variable) {
         console.log('🖱️ County clicked:', countyData);
         
         try {
             AppState.selectedCounty = countyData;
             
             // Show county information
-            await this.ui.showCountyInfo(countyData, AppState.currentVariable);
+            await this.ui.showCountyInfo(countyData, variable);
             
             // Optionally load additional county details from API
             if (countyData.properties?.fips) {
