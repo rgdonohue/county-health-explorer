@@ -4,7 +4,7 @@
 
 A minimalist, reproducible, full-stack spatial data science application to explore U.S. county-level health data. This project showcases backend-to-frontend integration using DuckDB, FastAPI, and vanilla JavaScript with Observable Plot for cartographically accurate mapping and statistical charting.
 
-**✅ Status**: Fully functional with working backend and frontend servers
+**⚠️ Status**: Backend and frontend servers are fully functional, but other features are still in development
 
 ## 🧱 Tech Stack
 
