@@ -203,16 +203,17 @@ class CountyHealthETL:
                 
                 # Build a list of columns with proper casting for numeric raw value columns
                 column_selects = []
-                for col_name, col_type in columns_result:
+                for row in columns_result:
+                    col_name, col_type = row[0], row[1]  # Extract first two columns from DESCRIBE result
                     if "raw value" in col_name:
                         # Cast raw value columns to DOUBLE for proper numeric operations
-                        column_selects.append(f'CAST("{col_name}" AS DOUBLE) AS "{col_name}"')
+                        column_selects.append(f'CAST(h."{col_name}" AS DOUBLE) AS "{col_name}"')
                     elif col_name in ['5-digit FIPS Code', 'Name', 'State Abbreviation']:
-                        # Keep key string columns
-                        column_selects.append(f'"{col_name}"')
+                        # Skip these as they're already handled in the main SELECT
+                        continue
                     else:
                         # Keep other columns as-is
-                        column_selects.append(f'"{col_name}"')
+                        column_selects.append(f'h."{col_name}"')
                 
                 # Create the properly typed view
                 conn.execute(f"""
@@ -221,7 +222,7 @@ class CountyHealthETL:
                         h."5-digit FIPS Code" as fips_code,
                         h."Name" as county_name,
                         h."State Abbreviation" as state_name,
-                        {", ".join([f'h.{col}' for col in column_selects])},
+                        {", ".join(column_selects)},
                         s.geometry
                     FROM county_health h
                     INNER JOIN county_spatial s ON h."5-digit FIPS Code" = s.fips_code

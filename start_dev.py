@@ -38,8 +38,16 @@ def main():
     try:
         # Start backend server
         print("🔧 Starting backend server...")
+        
+        # Use virtual environment if available
+        venv_python = Path("venv/bin/python3")
+        if venv_python.exists():
+            python_exe = str(venv_python.absolute())
+        else:
+            python_exe = sys.executable
+            
         backend_cmd = [
-            sys.executable, "-m", "uvicorn", 
+            python_exe, "-m", "uvicorn", 
             "app.main:app", 
             "--reload", 
             "--port", "8000",
@@ -71,7 +79,7 @@ def main():
         # Start frontend server
         print("🌐 Starting frontend server...")
         frontend_process = subprocess.Popen(
-            [sys.executable, "serve_frontend.py"],
+            [python_exe, "serve_frontend.py"],
             stdout=subprocess.PIPE,
             stderr=subprocess.STDOUT,
             universal_newlines=True

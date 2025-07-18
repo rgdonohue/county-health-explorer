@@ -27,7 +27,7 @@ class DatabaseManager:
         
     def get_connection(self) -> duckdb.DuckDBPyConnection:
         """Get or create database connection with spatial extension."""
-        if self._connection is None:
+        if self._connection is None or self._connection.closed:
             logger.info(f"Creating DuckDB connection to {self.db_path}")
             self._connection = duckdb.connect(self.db_path)
             self._setup_spatial_extension()
@@ -72,15 +72,18 @@ class DatabaseManager:
     @contextmanager
     def get_cursor(self) -> Generator[duckdb.DuckDBPyConnection, None, None]:
         """Context manager for database operations."""
-        conn = self.get_connection()
+        # For better concurrency, create a new connection for each operation
+        conn = duckdb.connect(self.db_path)
         try:
+            # Load spatial extension for this connection
+            conn.execute("INSTALL spatial;")
+            conn.execute("LOAD spatial;")
             yield conn
         except Exception as e:
             logger.error(f"Database operation failed: {e}")
             raise
         finally:
-            # Connection cleanup is handled by DuckDB automatically
-            pass
+            conn.close()
     
     def close(self):
         """Close database connection."""

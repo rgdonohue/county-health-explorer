@@ -1,6 +1,10 @@
 # 🗂️ County Health Explorer
 
+![County Health Explorer Interface](images/county-health-explorer.png)
+
 A minimalist, reproducible, full-stack spatial data science application to explore U.S. county-level health data. This project showcases backend-to-frontend integration using DuckDB, FastAPI, and vanilla JavaScript with Observable Plot for cartographically accurate mapping and statistical charting.
+
+**✅ Status**: Fully functional with working backend and frontend servers
 
 ## 🧱 Tech Stack
 
@@ -66,31 +70,36 @@ county-health-explorer/
    pip install -r requirements.txt
    ```
 
-3. **Run ETL pipeline** (first time only):
+3. **Set up virtual environment**:
    ```bash
-   python backend/app/etl.py
+   python -m venv venv
+   source venv/bin/activate  # On Windows: venv\Scripts\activate
+   pip install -r requirements.txt
+   ```
+
+4. **Run ETL pipeline** (first time only):
+   ```bash
+   PYTHONPATH=backend python -m app.etl
    ```
 
 ### Development (Recommended)
 
-**Option 1: Start both servers automatically**
-```bash
-python start_dev.py
-```
-This will start both backend and frontend servers with proper coordination and health checks.
+**Start both servers individually**:
 
-**Option 2: Start servers individually**
-
-Start the backend server:
+Terminal 1 - Backend server:
 ```bash
-cd backend && uvicorn app.main:app --reload --port 8000
+cd backend && ../venv/bin/python3 -m uvicorn app.main:app --reload --port 8000
 ```
 
-Start the frontend server (in a new terminal):
+Terminal 2 - Frontend server:
 ```bash
 python serve_frontend.py
 ```
-The frontend server will check if the backend is running and provide helpful guidance if not.
+
+**Alternative**: Use the development script (may require debugging):
+```bash
+python start_dev.py
+```
 
 ### Production
 
@@ -100,9 +109,10 @@ cd backend && uvicorn app.main:app --port 8000
 ```
 
 ### Access Points
-- **Frontend App**: http://localhost:3000 (development) or http://localhost:8000 (production)
-- **API Documentation**: http://localhost:8000/docs
-- **Health Check**: http://localhost:8000/api/health
+- **🌐 Frontend Application**: http://localhost:3000
+- **📚 API Documentation**: http://localhost:8000/docs  
+- **🔍 Health Check**: http://localhost:8000/health
+- **📊 Example API Call**: http://localhost:8000/api/stats?var=premature_death
 
 ## 🔗 API Endpoints
 
